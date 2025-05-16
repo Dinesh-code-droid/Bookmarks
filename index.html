@@ -119,6 +119,7 @@
     .bookmark .delete-btn:hover {
       background: #d1131a;
     }
+  
     @media (max-width: 500px) {
       .button-group button {
         flex: 0 0 auto;
@@ -169,27 +170,34 @@
   }
 
   function displayBookmarks() {
-    const list = document.getElementById('bookmarkList');
-    list.innerHTML = '';
-    bookmarks.forEach((bm, index) => {
-      const div = document.createElement('div');
-      div.className = 'bookmark';
-      div.innerHTML = `
-        <strong>${bm.name}</strong>
-        <small>Saved: ${bm.dateTime}</small>
-        <small>Last Opened: ${bm.lastOpened}</small>
-        <br>
-        <a href="#" onclick="openBookmark(${index})">${bm.url}</a>
-        <button class="delete-btn" onclick="deleteBookmark(${index})">Delete</button>
-      `;
-      list.appendChild(div);
-    });
-  }
+  const list = document.getElementById('bookmarkList');
+  list.innerHTML = '';
+  bookmarks.forEach((bm, index) => {
+    const div = document.createElement('div');
+    div.className = 'bookmark';
+    div.innerHTML = `
+      <strong>${bm.name}</strong>
+      <small>Saved: ${bm.dateTime}</small>
+      <small>Last Opened: ${bm.lastOpened}</small>
+      <br>
+      <a href="#" onclick="openBookmark(${index}); event.stopPropagation();">${bm.url}</a>
+      <button class="delete-btn" onclick="deleteBookmark(${index}); event.stopPropagation();">Delete</button>
+    `;
+    // Add click event to the entire bookmark box
+    div.addEventListener('click', () => openBookmark(index));
+    list.appendChild(div);
+  });
+}
 
+  
+  
+  
+  
+  
  function addnsave(){
    addBookmark();
    saveBookmarks();
-  
+  // alert("add n saved! best of luck");
  }
   function saveBookmarks() {
   
