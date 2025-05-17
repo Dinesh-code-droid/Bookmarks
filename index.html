@@ -15,6 +15,13 @@
       color: #222;
       min-height: 100vh;
     }
+  
+  
+  
+  
+  
+  
+  
     @keyframes gradientBG {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
@@ -127,12 +134,45 @@
         font-size: 14px;
       }
     }
+  
+  #searchBox {
+      padding: 10px;
+      width: 280px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 18px;
+    }
+    #buttons {
+      padding: 10px 20px;
+      font-size: 18px;
+      background: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      margin-left: 10px;
+      cursor: pointer;
+    }
+    buttons:hover {
+      background: #45a049;
+    }
+  
+  
+  
+  
+  
+  
   </style>
 </head>
+
+
+
 <body>
 
 <h2>Bookmark Diary</h2>
-
+  
+ <input type="text" id="searchBox" placeholder="google search...." onkeydown="if(event.key==='Enter') searchGoogle()" >
+  <button id="buttons" onclick="searchGoogle()">Search</button>
+  <br> <hr><br><br>
 <div class="input-group">
   <input type="text" id="shortName" placeholder="Short Name">
   <input type="text" id="webURL" placeholder="Web URL (https://...)">
@@ -154,6 +194,17 @@
 
 <script>
   let bookmarks = [];
+  
+  
+  function searchGoogle() {
+      var query = document.getElementById('searchBox').value;
+      if (query.trim() !== "") {
+        // Redirect to Google Search with query
+        window.location.href = "https://www.google.com/search?q=" + encodeURIComponent(query);
+      } else {
+        alert("Please enter a search term.");
+      }
+    }
 
   function addBookmark() {
     const name = document.getElementById('shortName').value.trim();
