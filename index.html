@@ -141,16 +141,18 @@
       border-radius: 5px;
       border: 1px solid #ccc;
       font-size: 18px;
+    border-radius: 50px;
     }
     #buttons {
       padding: 10px 20px;
       font-size: 18px;
-      background: #4caf50;
+      background: #FF3D00;
       color: white;
       border: none;
-      border-radius: 5px;
+      border-radius: 50px;
       margin-left: 10px;
       cursor: pointer;
+      width: 90px;
     }
     buttons:hover {
       background: #45a049;
@@ -172,7 +174,12 @@
   
  <input type="text" id="searchBox" placeholder="google search...." onkeydown="if(event.key==='Enter') searchGoogle()" >
   <button id="buttons" onclick="searchGoogle()">Search</button>
-  <br> <hr><br><br>
+  <br><hr> <hr><br><br>
+  <marquee>
+  <p>Search and save your bookmarks</p>
+    </marquee>
+  <br>
+  <br>
 <div class="input-group">
   <input type="text" id="shortName" placeholder="Short Name">
   <input type="text" id="webURL" placeholder="Web URL (https://...)">
