@@ -157,7 +157,7 @@
 <br><hr><hr><br>
 
 <div class="input-group">
-  <input type="text" id="shortName" placeholder="Short Name">
+  <input type="text" id="shortName" placeholder="Short Name" oninput="capitalizeshortName()">
   <input type="text" id="webURL" placeholder="Web URL (https://...)">
 </div>
 
@@ -172,6 +172,17 @@
 <input type="file" id="importFile" accept=".txt" onchange="importBookmarks()" style="display:none;">
 
 <script>
+  
+  function capitalizeshortName() {
+    const input = document.getElementById('shortName');
+    const value = input.value.toLowerCase()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    input.value = value;
+}
+  
+  
   let bookmarks = [];
 
   // FIXED: Correct day calculation using proper date normalization
