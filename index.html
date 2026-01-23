@@ -9,7 +9,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Poppins', sans-serif;
-      padding: 20px;
+      padding: 10px;
       background: linear-gradient(135deg, #FFFFFF, #F7FFFD, #FFFFFF);
       background-size: 600% 600%;
       animation: gradientBG 10s ease infinite;
@@ -52,41 +52,34 @@
 
     #bookdiv {
      display: flex;
-     justify-content: center;
+     //justify-content: center;
       border: 1px solid #ddd;
-      padding: 5px;
-      border-radius: 12px;
+     border-radius: 2px;
       background: rgba(255,255,255,0.8);
       
     }
     .bookmark-column {
       flex: 1;
-      //border:solid,1px;
-   
-      
     }
     .bookmark {
-      display: flex;
-      justify-content:space-between;
+      text-align:center;
       background: #ffffffee;
-      padding: 12px;
-      margin: 15px 15px;
-       
-      border-left: 6px solid #17c3b2;
-      border-radius: 14px;
+      margin: 3px 3px;
+      width:95%;
+       height:50px;
+      border-left: 4px solid #17c3b2;
+      border-radius: 10px;
       box-shadow: 0 3px 6px rgba(0,0,0,0.15);
       transition: transform 0.2s;
-      
       position: relative;
-      width:170px;
     }
     .bookmark:hover { transform: scale(1.015); }
+  
     .bookmark strong {
-      font-size: 18px;
+      font-size: 15px;
       display: block;
-      margin-bottom: 6px;
+      padding-top: 10px;
       color: #111;
-     // max-width: 100%;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -94,9 +87,7 @@
     .bookmark small {
       display: block;
       color: #666;
-      margin-left: 10px;
       font-size: 12px;
-      padding:5px;
     }
     .bookmark a {
       color: #3d5af1;
@@ -119,7 +110,6 @@
       padding: 6px 10px;
       border-radius: 8px;
       color: #fff;
-      
       font-size: 12px;
       display: none;
     }
@@ -146,7 +136,6 @@
       border: none;
       border-radius: 50px;
       margin-left: 10px;
-      
       width: 90px;
     }
     #buttons:hover { background: #45a049; }
@@ -185,7 +174,7 @@
 <script>
   let bookmarks = [];
 
-  // FIXED FUNCTION - handles ALL date corruption cases
+  // FIXED: Correct day calculation using proper date normalization
   function getDaysAgo(dateStr) {
     if (dateStr === "Never" || !dateStr) return "Never";
     
@@ -193,8 +182,9 @@
     if (isNaN(lastOpened.getTime())) return "Never";
     
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const bookmarkDate = new Date(lastOpened.getFullYear(), lastOpened.getMonth(), lastOpened.getDate());
+    // Normalize both dates to midnight to avoid time-of-day issues
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    const bookmarkDate = new Date(lastOpened.getFullYear(), lastOpened.getMonth(), lastOpened.getDate(), 0, 0, 0);
     
     const diffTime = today.getTime() - bookmarkDate.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -221,7 +211,7 @@
       alert('Please fill both fields.');
       return;
     }
-    bookmarks.push({ name, url, dateTime: new Date().toLocaleString(), lastOpened: "Never" });
+    bookmarks.push({ name, url, dateTime: new Date().toISOString(), lastOpened: "Never" });
     displayBookmarks();
     document.getElementById('shortName').value = '';
     document.getElementById('webURL').value = '';
@@ -267,7 +257,7 @@
 
   function openBookmark(index) {
     const bm = bookmarks[index];
-    bookmarks[index].lastOpened = new Date().toLocaleString();
+    bookmarks[index].lastOpened = new Date().toISOString();
     saveBookmarks();
     displayBookmarks();
     window.open(bm.url, '_blank');
@@ -291,7 +281,14 @@
       try {
         const imported = JSON.parse(e.target.result);
         if (Array.isArray(imported)) {
-          bookmarks = bookmarks.concat(imported);
+          // Fix dates during import
+          const fixedBookmarks = imported.map(bm => ({
+            name: bm.name || '',
+            url: bm.url || '',
+            dateTime: bm.dateTime || '',
+            lastOpened: (bm.lastOpened && !isNaN(new Date(bm.lastOpened).getTime())) ? bm.lastOpened : "Never"
+          }));
+          bookmarks = bookmarks.concat(fixedBookmarks);
           saveBookmarks();
           displayBookmarks();
         } else {
