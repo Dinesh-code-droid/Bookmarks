@@ -1,11 +1,9 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Bookmark Diary</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- [ALL STYLES REMAIN EXACTLY SAME - NO CHANGES] -->
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -43,59 +41,65 @@
       border: none; border-radius: 50px; color: #fff;
       transition: transform 0.2s;
       box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+      cursor: pointer;
     }
     .button-group button:hover { transform: scale(1.05); }
-    button:nth-child(1) { background: #ff3c38; }
-    button:nth-child(2) { background: #ffa534; }
-    button:nth-child(3) { background: #17c3b2; }
-    button:nth-child(4) { background: #3d5af1; }
-    button:nth-child(5) { background: #8338ec; }
+    .button-group button:nth-child(1) { background: #ff3c38; }
+    .button-group button:nth-child(2) { background: #ffa534; }
+    .button-group button:nth-child(3) { background: #17c3b2; }
+    .button-group button:nth-child(4) { background: #3d5af1; }
+    .button-group button:nth-child(5) { background: #8338ec; }
 
     #bookdiv {
-     display: flex;
-     //justify-content: center;
+      display: flex;
       border: 1px solid #ddd;
-      //padding: px;
-     border-radius: 2px;
+      border-radius: 2px;
       background: rgba(255,255,255,0.8);
-      
     }
     .bookmark-column {
       flex: 1;
-      
-    //  border:solid,1px;
-      
-   
-      
     }
+
+    /* ── Drag & Drop styles ── */
     .bookmark {
-     // display: flex;      // this align text left and right
-     // justify-content:space-between;
-      text-align:center;
+      text-align: center;
       background: #ffffffee;
-    //  padding-left: 12px;
       margin: 3px 3px;
-     
-      width:95%;
-       height:50px;
-      
-     // border:1px solid;
+      width: 95%;
+      height: 50px;
       border-left: 4px solid #17c3b2;
       border-radius: 10px;
       box-shadow: 0 3px 6px rgba(0,0,0,0.15);
-      transition: transform 0.2s;
-      
+      transition: transform 0.2s, opacity 0.2s, box-shadow 0.2s;
       position: relative;
-      
+      cursor: grab;
+      user-select: none;
     }
+    .bookmark:active { cursor: grabbing; }
     .bookmark:hover { transform: scale(1.015); }
-  
+
+    /* Item being dragged */
+    .bookmark.dragging {
+      opacity: 0.4;
+      transform: scale(1.03);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    }
+
+    /* Drop indicator line between items */
+    .drop-indicator {
+      height: 3px;
+      background: #17c3b2;
+      border-radius: 2px;
+      margin: 0 3px;
+      display: none;
+    }
+    .drop-indicator.active { display: block; }
+
     .bookmark strong {
       font-size: 15px;
       display: block;
       padding-top: 10px;
       color: #111;
-     // max-width: 100%;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -103,9 +107,7 @@
     .bookmark small {
       display: block;
       color: #666;
-   //   margin-left: 10px;
       font-size: 12px;
-    //  padding:5px;
     }
     .bookmark a {
       color: #3d5af1;
@@ -128,14 +130,14 @@
       padding: 6px 10px;
       border-radius: 8px;
       color: #fff;
-      
       font-size: 12px;
       display: none;
+      cursor: pointer;
     }
     .bookmark .delete-btn:hover { background: #d1131a; }
 
     @media (max-width: 500px) {
-      #bookdiv { flex-direction:row; }
+      #bookdiv { flex-direction: row; }
       .bookmark-column { max-width: 50%; margin: 10px 0; }
       .button-group button { padding: 10px 14px; font-size: 14px; }
     }
@@ -155,19 +157,29 @@
       border: none;
       border-radius: 50px;
       margin-left: 10px;
-      
       width: 90px;
+      cursor: pointer;
     }
     #buttons:hover { background: #45a049; }
+
+    /* Drag hint badge */
+    #dragHint {
+      text-align: center;
+      font-size: 12px;
+      color: #aaa;
+      margin-bottom: 4px;
+    }
   </style>
 </head>
 
 <body>
 <h2>Bookmark Diary</h2>
-  
+
 <input type="text" id="searchBox" placeholder="google search...." onkeydown="if(event.key==='Enter') searchGoogle()">
 <button id="buttons" onclick="searchGoogle()">Search</button>
 <br><hr><hr><br>
+
+<p id="dragHint">☰ Drag bookmarks to reorder</p>
 
 <div id="bookdiv">
   <div class="bookmark-column" id="bookmarkList1"></div>
@@ -193,98 +205,177 @@
 
 <script>
   let bookmarks = [];
+  let dragSrcIndex = null;   // index in bookmarks[] of item being dragged
+  let isEditMode = false;
 
-  // FIXED FUNCTION - handles ALL date corruption cases
+  // ── Date helper ──
   function getDaysAgo(dateStr) {
     if (dateStr === "Never" || !dateStr) return "Never";
-    
     const lastOpened = new Date(dateStr);
     if (isNaN(lastOpened.getTime())) return "Never";
-    
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const bookmarkDate = new Date(lastOpened.getFullYear(), lastOpened.getMonth(), lastOpened.getDate());
-    
-    const diffTime = today.getTime() - bookmarkDate.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+    const diffDays = Math.floor((today - bookmarkDate) / 86400000);
     if (diffDays <= 0) return "today";
     if (diffDays === 1) return "1 day ago";
-    
     return `${diffDays} days ago`;
   }
 
+  // ── Search ──
   function searchGoogle() {
-    var query = document.getElementById('searchBox').value;
-    if (query.trim() !== "") {
+    const query = document.getElementById('searchBox').value;
+    if (query.trim()) {
       window.location.href = "https://www.google.com/search?q=" + encodeURIComponent(query);
     } else {
       alert("Please enter a search term.");
     }
   }
 
+  // ── Add ──
   function addBookmark() {
     const name = document.getElementById('shortName').value.trim();
-    const url = document.getElementById('webURL').value.trim();
-    if (!name || !url) {
-      alert('Please fill both fields.');
-      return;
-    }
+    const url  = document.getElementById('webURL').value.trim();
+    if (!name || !url) { alert('Please fill both fields.'); return; }
     bookmarks.push({ name, url, dateTime: new Date().toLocaleString(), lastOpened: "Never" });
     displayBookmarks();
     document.getElementById('shortName').value = '';
     document.getElementById('webURL').value = '';
   }
 
+  // ── Display (with drag-and-drop wiring) ──
   function displayBookmarks() {
     const list1 = document.getElementById('bookmarkList1');
     const list2 = document.getElementById('bookmarkList2');
     list1.innerHTML = '';
     list2.innerHTML = '';
-    
+
     bookmarks.forEach((bm, index) => {
       const div = document.createElement('div');
       div.className = 'bookmark';
+      div.draggable = true;
+      div.dataset.index = index;
+
       div.innerHTML = `
         <strong>${bm.name}</strong>
         <small>${getDaysAgo(bm.lastOpened)}</small>
         <button class="delete-btn" onclick="deleteBookmark(${index}); event.stopPropagation();">Delete</button>
       `;
-      
-      div.addEventListener('click', (e) => {
-        if (!e.target.classList.contains('delete-btn')) {
-          openBookmark(index);
-        }
-      });
-      
-      if (index % 2 === 0) {
-        list1.appendChild(div);
-      } else {
-        list2.appendChild(div);
+
+      // show delete buttons if edit mode is on
+      if (isEditMode) {
+        div.querySelector('.delete-btn').style.display = 'block';
       }
+
+      // ── open on click (not drag) ──
+      div.addEventListener('click', (e) => {
+        if (!e.target.classList.contains('delete-btn')) openBookmark(index);
+      });
+
+      // ── drag events ──
+      div.addEventListener('dragstart', onDragStart);
+      div.addEventListener('dragend',   onDragEnd);
+      div.addEventListener('dragover',  onDragOver);
+      div.addEventListener('dragleave', onDragLeave);
+      div.addEventListener('drop',      onDrop);
+
+      if (index % 2 === 0) list1.appendChild(div);
+      else                  list2.appendChild(div);
     });
   }
 
-  function addnsave() {
-    addBookmark();
-    saveBookmarks();
+  // ── Drag handlers ──
+  function onDragStart(e) {
+    dragSrcIndex = parseInt(this.dataset.index);
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', dragSrcIndex);
   }
 
-  function saveBookmarks() {
-    localStorage.setItem('myBookmarks', JSON.stringify(bookmarks));
+  function onDragEnd(e) {
+    document.querySelectorAll('.bookmark').forEach(el => {
+      el.classList.remove('dragging');
+      el.style.borderTop = '';
+      el.style.borderBottom = '';
+    });
   }
+
+  function onDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    // Highlight drop zone
+    const rect   = this.getBoundingClientRect();
+    const midY   = rect.top + rect.height / 2;
+    const isTop  = e.clientY < midY;
+    this.style.borderTop    = isTop  ? '3px solid #17c3b2' : '';
+    this.style.borderBottom = !isTop ? '3px solid #17c3b2' : '';
+  }
+
+  function onDragLeave(e) {
+    this.style.borderTop    = '';
+    this.style.borderBottom = '';
+  }
+
+  function onDrop(e) {
+    e.preventDefault();
+    this.style.borderTop    = '';
+    this.style.borderBottom = '';
+
+    const targetIndex = parseInt(this.dataset.index);
+    if (dragSrcIndex === null || dragSrcIndex === targetIndex) return;
+
+    // Determine insert position (before or after target)
+    const rect  = this.getBoundingClientRect();
+    const midY  = rect.top + rect.height / 2;
+    const after = e.clientY >= midY;
+
+    // Remove dragged item
+    const [moved] = bookmarks.splice(dragSrcIndex, 1);
+
+    // Recalculate target position after removal
+    let insertAt = targetIndex;
+    if (dragSrcIndex < targetIndex) insertAt = targetIndex - 1;
+    if (after) insertAt += 1;
+
+    bookmarks.splice(insertAt, 0, moved);
+    dragSrcIndex = null;
+
+    saveBookmarks();
+    displayBookmarks();
+
+    // re-apply edit mode if active
+    if (isEditMode) {
+      document.querySelectorAll('.delete-btn').forEach(b => b.style.display = 'block');
+    }
+  }
+
+  // ── CRUD & storage ──
+  function addnsave()      { addBookmark(); saveBookmarks(); }
+  function saveBookmarks() { localStorage.setItem('myBookmarks', JSON.stringify(bookmarks)); }
 
   function openBookmark(index) {
-    const bm = bookmarks[index];
     bookmarks[index].lastOpened = new Date().toLocaleString();
     saveBookmarks();
     displayBookmarks();
-    window.open(bm.url, '_blank');
+    window.open(bookmarks[index].url, '_blank');
+  }
+
+  function deleteBookmark(index) {
+    bookmarks.splice(index, 1);
+    saveBookmarks();
+    isEditMode = false;
+    displayBookmarks();
+  }
+
+  function toggleDeleteButtons() {
+    isEditMode = !isEditMode;
+    document.querySelectorAll('.delete-btn').forEach(btn => {
+      btn.style.display = isEditMode ? 'block' : 'none';
+    });
   }
 
   function exportBookmarks() {
-    const data = JSON.stringify(bookmarks, null, 2);
-    const blob = new Blob([data], { type: 'text/plain' });
+    const blob = new Blob([JSON.stringify(bookmarks, null, 2)], { type: 'text/plain' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'bookmarks.txt';
@@ -292,8 +383,7 @@
   }
 
   function importBookmarks() {
-    const fileInput = document.getElementById('importFile');
-    const file = fileInput.files[0];
+    const file = document.getElementById('importFile').files[0];
     if (!file) return;
     const reader = new FileReader();
     reader.onload = function(e) {
@@ -303,53 +393,30 @@
           bookmarks = bookmarks.concat(imported);
           saveBookmarks();
           displayBookmarks();
-        } else {
-          alert('Invalid file format.');
-        }
-      } catch (err) {
-        alert('Error reading file.');
-      }
+        } else { alert('Invalid file format.'); }
+      } catch { alert('Error reading file.'); }
     };
     reader.readAsText(file);
-  }
-
-  function deleteBookmark(index) {
-    bookmarks.splice(index, 1);
-    saveBookmarks();
-    displayBookmarks();
-    toggleDeleteButtons();
-  }
-
-  function toggleDeleteButtons() {
-    const btns = document.querySelectorAll('.delete-btn');
-    btns.forEach(btn => {
-      btn.style.display = (btn.style.display === 'block') ? 'none' : 'block';
-    });
   }
 
   function loadBookmarks() {
     const stored = localStorage.getItem('myBookmarks');
     if (stored) {
       try {
-        const parsed = JSON.parse(stored);
-        // Fix corrupted dates during load
-        bookmarks = parsed.map(bm => ({
-          name: bm.name || '',
-          url: bm.url || '',
-          dateTime: bm.dateTime || '',
-          lastOpened: (bm.lastOpened && !isNaN(new Date(bm.lastOpened).getTime())) ? bm.lastOpened : "Never"
+        bookmarks = JSON.parse(stored).map(bm => ({
+          name:       bm.name       || '',
+          url:        bm.url        || '',
+          dateTime:   bm.dateTime   || '',
+          lastOpened: (bm.lastOpened && !isNaN(new Date(bm.lastOpened).getTime()))
+                      ? bm.lastOpened : "Never"
         }));
-      } catch(e) {
-        bookmarks = [];
-      }
+      } catch { bookmarks = []; }
       displayBookmarks();
     }
   }
 
   document.getElementById('webURL').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-      addBookmark();
-    }
+    if (e.key === 'Enter') addBookmark();
   });
 
   loadBookmarks();
