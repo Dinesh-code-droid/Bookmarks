@@ -284,7 +284,7 @@
     });
   }
 
-  // ── Drag handlers ──
+  // ── Drag handlers — SWAP only ──
   function onDragStart(e) {
     dragSrcIndex = parseInt(this.dataset.index);
     this.classList.add('dragging');
@@ -295,55 +295,37 @@
   function onDragEnd(e) {
     document.querySelectorAll('.bookmark').forEach(el => {
       el.classList.remove('dragging');
-      el.style.borderTop = '';
-      el.style.borderBottom = '';
+      el.style.outline = '';
     });
   }
 
   function onDragOver(e) {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    // Highlight drop zone
-    const rect   = this.getBoundingClientRect();
-    const midY   = rect.top + rect.height / 2;
-    const isTop  = e.clientY < midY;
-    this.style.borderTop    = isTop  ? '3px solid #17c3b2' : '';
-    this.style.borderBottom = !isTop ? '3px solid #17c3b2' : '';
+    this.style.outline = '2px dashed #17c3b2';
   }
 
   function onDragLeave(e) {
-    this.style.borderTop    = '';
-    this.style.borderBottom = '';
+    this.style.outline = '';
   }
 
   function onDrop(e) {
     e.preventDefault();
-    this.style.borderTop    = '';
-    this.style.borderBottom = '';
+    this.style.outline = '';
 
     const targetIndex = parseInt(this.dataset.index);
     if (dragSrcIndex === null || dragSrcIndex === targetIndex) return;
 
-    // Determine insert position (before or after target)
-    const rect  = this.getBoundingClientRect();
-    const midY  = rect.top + rect.height / 2;
-    const after = e.clientY >= midY;
+    // ── Simple swap — only these two positions exchange ──
+    const temp = bookmarks[dragSrcIndex];
+    bookmarks[dragSrcIndex] = bookmarks[targetIndex];
+    bookmarks[targetIndex]  = temp;
 
-    // Remove dragged item
-    const [moved] = bookmarks.splice(dragSrcIndex, 1);
-
-    // Recalculate target position after removal
-    let insertAt = targetIndex;
-    if (dragSrcIndex < targetIndex) insertAt = targetIndex - 1;
-    if (after) insertAt += 1;
-
-    bookmarks.splice(insertAt, 0, moved);
     dragSrcIndex = null;
 
     saveBookmarks();
     displayBookmarks();
 
-    // re-apply edit mode if active
     if (isEditMode) {
       document.querySelectorAll('.delete-btn').forEach(b => b.style.display = 'block');
     }
@@ -424,3 +406,4 @@
 
 </body>
 </html>
+
