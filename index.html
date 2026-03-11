@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -54,24 +55,38 @@
      display: flex;
      //justify-content: center;
       border: 1px solid #ddd;
+      //padding: px;
      border-radius: 2px;
       background: rgba(255,255,255,0.8);
       
     }
     .bookmark-column {
       flex: 1;
+      
+    //  border:solid,1px;
+      
+   
+      
     }
     .bookmark {
+     // display: flex;      // this align text left and right
+     // justify-content:space-between;
       text-align:center;
       background: #ffffffee;
+    //  padding-left: 12px;
       margin: 3px 3px;
+     
       width:95%;
        height:50px;
+      
+     // border:1px solid;
       border-left: 4px solid #17c3b2;
       border-radius: 10px;
       box-shadow: 0 3px 6px rgba(0,0,0,0.15);
       transition: transform 0.2s;
+      
       position: relative;
+      
     }
     .bookmark:hover { transform: scale(1.015); }
   
@@ -80,6 +95,7 @@
       display: block;
       padding-top: 10px;
       color: #111;
+     // max-width: 100%;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -87,7 +103,9 @@
     .bookmark small {
       display: block;
       color: #666;
+   //   margin-left: 10px;
       font-size: 12px;
+    //  padding:5px;
     }
     .bookmark a {
       color: #3d5af1;
@@ -110,6 +128,7 @@
       padding: 6px 10px;
       border-radius: 8px;
       color: #fff;
+      
       font-size: 12px;
       display: none;
     }
@@ -136,6 +155,7 @@
       border: none;
       border-radius: 50px;
       margin-left: 10px;
+      
       width: 90px;
     }
     #buttons:hover { background: #45a049; }
@@ -157,7 +177,7 @@
 <br><hr><hr><br>
 
 <div class="input-group">
-  <input type="text" id="shortName" placeholder="Short Name" oninput="capitalizeshortName()">
+  <input type="text" id="shortName" placeholder="Short Name">
   <input type="text" id="webURL" placeholder="Web URL (https://...)">
 </div>
 
@@ -172,20 +192,9 @@
 <input type="file" id="importFile" accept=".txt" onchange="importBookmarks()" style="display:none;">
 
 <script>
-  
-  function capitalizeshortName() {
-    const input = document.getElementById('shortName');
-    const value = input.value.toLowerCase()
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-    input.value = value;
-}
-  
-  
   let bookmarks = [];
 
-  // FIXED: Correct day calculation using proper date normalization
+  // FIXED FUNCTION - handles ALL date corruption cases
   function getDaysAgo(dateStr) {
     if (dateStr === "Never" || !dateStr) return "Never";
     
@@ -193,9 +202,8 @@
     if (isNaN(lastOpened.getTime())) return "Never";
     
     const now = new Date();
-    // Normalize both dates to midnight to avoid time-of-day issues
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-    const bookmarkDate = new Date(lastOpened.getFullYear(), lastOpened.getMonth(), lastOpened.getDate(), 0, 0, 0);
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const bookmarkDate = new Date(lastOpened.getFullYear(), lastOpened.getMonth(), lastOpened.getDate());
     
     const diffTime = today.getTime() - bookmarkDate.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -222,7 +230,7 @@
       alert('Please fill both fields.');
       return;
     }
-    bookmarks.push({ name, url, dateTime: new Date().toISOString(), lastOpened: "Never" });
+    bookmarks.push({ name, url, dateTime: new Date().toLocaleString(), lastOpened: "Never" });
     displayBookmarks();
     document.getElementById('shortName').value = '';
     document.getElementById('webURL').value = '';
@@ -268,7 +276,7 @@
 
   function openBookmark(index) {
     const bm = bookmarks[index];
-    bookmarks[index].lastOpened = new Date().toISOString();
+    bookmarks[index].lastOpened = new Date().toLocaleString();
     saveBookmarks();
     displayBookmarks();
     window.open(bm.url, '_blank');
@@ -292,14 +300,7 @@
       try {
         const imported = JSON.parse(e.target.result);
         if (Array.isArray(imported)) {
-          // Fix dates during import
-          const fixedBookmarks = imported.map(bm => ({
-            name: bm.name || '',
-            url: bm.url || '',
-            dateTime: bm.dateTime || '',
-            lastOpened: (bm.lastOpened && !isNaN(new Date(bm.lastOpened).getTime())) ? bm.lastOpened : "Never"
-          }));
-          bookmarks = bookmarks.concat(fixedBookmarks);
+          bookmarks = bookmarks.concat(imported);
           saveBookmarks();
           displayBookmarks();
         } else {
