@@ -205,12 +205,12 @@
 
 <script>
   let bookmarks = [];
-  let dragSrcIndex = null;   // index in bookmarks[] of item being dragged
+  let dragSrcIndex = null;
   let isEditMode = false;
 
   // ── Date helper ──
   function getDaysAgo(dateStr) {
-    if (dateStr === "Never" || !dateStr) return "Never";
+    if (!dateStr || dateStr === "Never") return "Never";
     const lastOpened = new Date(dateStr);
     if (isNaN(lastOpened.getTime())) return "Never";
     const now = new Date();
@@ -237,7 +237,8 @@
     const name = document.getElementById('shortName').value.trim();
     const url  = document.getElementById('webURL').value.trim();
     if (!name || !url) { alert('Please fill both fields.'); return; }
-    bookmarks.push({ name, url, dateTime: new Date().toLocaleString(), lastOpened: "Never" });
+    // FIX: use toISOString() so dates are always parseable
+    bookmarks.push({ name, url, dateTime: new Date().toISOString(), lastOpened: "Never" });
     displayBookmarks();
     document.getElementById('shortName').value = '';
     document.getElementById('webURL').value = '';
@@ -262,17 +263,14 @@
         <button class="delete-btn" onclick="deleteBookmark(${index}); event.stopPropagation();">Delete</button>
       `;
 
-      // show delete buttons if edit mode is on
       if (isEditMode) {
         div.querySelector('.delete-btn').style.display = 'block';
       }
 
-      // ── open on click (not drag) ──
       div.addEventListener('click', (e) => {
         if (!e.target.classList.contains('delete-btn')) openBookmark(index);
       });
 
-      // ── drag events ──
       div.addEventListener('dragstart', onDragStart);
       div.addEventListener('dragend',   onDragEnd);
       div.addEventListener('dragover',  onDragOver);
@@ -284,7 +282,7 @@
     });
   }
 
-  // ── Drag handlers — SWAP only ──
+  // ── Drag handlers ──
   function onDragStart(e) {
     dragSrcIndex = parseInt(this.dataset.index);
     this.classList.add('dragging');
@@ -316,7 +314,6 @@
     const targetIndex = parseInt(this.dataset.index);
     if (dragSrcIndex === null || dragSrcIndex === targetIndex) return;
 
-    // ── Simple swap — only these two positions exchange ──
     const temp = bookmarks[dragSrcIndex];
     bookmarks[dragSrcIndex] = bookmarks[targetIndex];
     bookmarks[targetIndex]  = temp;
@@ -336,7 +333,8 @@
   function saveBookmarks() { localStorage.setItem('myBookmarks', JSON.stringify(bookmarks)); }
 
   function openBookmark(index) {
-    bookmarks[index].lastOpened = new Date().toLocaleString();
+    // FIX: use toISOString() so lastOpened is always parseable
+    bookmarks[index].lastOpened = new Date().toISOString();
     saveBookmarks();
     displayBookmarks();
     window.open(bookmarks[index].url, '_blank');
@@ -372,7 +370,15 @@
       try {
         const imported = JSON.parse(e.target.result);
         if (Array.isArray(imported)) {
-          bookmarks = bookmarks.concat(imported);
+          // FIX: normalize lastOpened to ISO string on import
+          const normalized = imported.map(bm => ({
+            name:       bm.name       || '',
+            url:        bm.url        || '',
+            dateTime:   bm.dateTime   || new Date().toISOString(),
+            lastOpened: (bm.lastOpened && !isNaN(new Date(bm.lastOpened).getTime()))
+                        ? new Date(bm.lastOpened).toISOString() : "Never"
+          }));
+          bookmarks = bookmarks.concat(normalized);
           saveBookmarks();
           displayBookmarks();
         } else { alert('Invalid file format.'); }
@@ -389,8 +395,9 @@
           name:       bm.name       || '',
           url:        bm.url        || '',
           dateTime:   bm.dateTime   || '',
-          lastOpened: (bm.lastOpened && !isNaN(new Date(bm.lastOpened).getTime()))
-                      ? bm.lastOpened : "Never"
+          // FIX: normalize old locale strings to ISO on load
+          lastOpened: (bm.lastOpened && bm.lastOpened !== "Never" && !isNaN(new Date(bm.lastOpened).getTime()))
+                      ? new Date(bm.lastOpened).toISOString() : "Never"
         }));
       } catch { bookmarks = []; }
       displayBookmarks();
@@ -406,4 +413,3 @@
 
 </body>
 </html>
-
