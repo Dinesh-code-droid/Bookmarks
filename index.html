@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <title>Bookmark Diary</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -56,26 +57,22 @@
       border-radius: 2px;
       background: rgba(255,255,255,0.8);
     }
-    .bookmark-column {
-      flex: 1;
-    }
+    .bookmark-column { flex: 1; }
 
-    /* ── Drag & Drop styles ── */
     .bookmark {
       text-align: center;
       background: #ffffffee;
       margin: 3px 3px;
       width: 95%;
-      height: 50px;
+      height: 60px;
       border-left: 4px solid #17c3b2;
       border-radius: 10px;
       box-shadow: 0 3px 6px rgba(0,0,0,0.15);
       transition: transform 0.2s, opacity 0.2s, box-shadow 0.2s;
       position: relative;
-      cursor: grab;
+      /* cursor is set dynamically via JS */
       user-select: none;
     }
-    .bookmark:active { cursor: grabbing; }
     .bookmark:hover { transform: scale(1.015); }
 
     /* Item being dragged */
@@ -84,55 +81,54 @@
       transform: scale(1.03);
       box-shadow: 0 8px 20px rgba(0,0,0,0.25);
     }
-
-    /* Drop indicator line between items */
-    .drop-indicator {
-      height: 3px;
-      background: #17c3b2;
-      border-radius: 2px;
-      margin: 0 3px;
-      display: none;
+    /* Drop target highlight */
+    .bookmark.drag-over {
+      outline: 2px dashed #17c3b2;
     }
-    .drop-indicator.active { display: block; }
 
     .bookmark strong {
-      font-size: 15px;
+      font-size: 14px;
       display: block;
-      padding-top: 10px;
+      padding-top: 8px;
       color: #111;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      padding-left: 6px;
+      padding-right: 70px; /* space for delete btn */
     }
     .bookmark small {
       display: block;
-      color: #666;
-      font-size: 12px;
+      color: #888;
+      font-size: 11px;
     }
-    .bookmark a {
-      color: #3d5af1;
-      text-decoration: none;
-      display: block;
-      margin-top: 8px;
-      font-size: 14px;
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+
+    /* Click count badge */
+    .click-count {
+      display: inline-block;
+    
+      border-radius: 20px;
+      font-size: 10px;
+      padding: 1px 7px;
+      margin-left: 4px;
+      font-weight: 600;
+      vertical-align: middle;
     }
-    .bookmark a:hover { text-decoration: underline; }
+
     .bookmark .delete-btn {
       position: absolute;
-      top: 8px;
+      top: 50%;
+      transform: translateY(-50%);
       right: 8px;
       background: #f51720;
       border: none;
-      padding: 6px 10px;
+      padding: 5px 9px;
       border-radius: 8px;
       color: #fff;
       font-size: 12px;
       display: none;
       cursor: pointer;
+      z-index: 10;
     }
     .bookmark .delete-btn:hover { background: #d1131a; }
 
@@ -162,7 +158,6 @@
     }
     #buttons:hover { background: #45a049; }
 
-    /* Drag hint badge */
     #dragHint {
       text-align: center;
       font-size: 12px;
@@ -179,7 +174,7 @@
 <button id="buttons" onclick="searchGoogle()">Search</button>
 <br><hr><hr><br>
 
-<p id="dragHint">☰ Drag bookmarks to reorder</p>
+<p id="dragHint">☰ Hold & drag bookmarks to reorder · Click to open</p>
 
 <div id="bookdiv">
   <div class="bookmark-column" id="bookmarkList1"></div>
@@ -189,8 +184,9 @@
 <br><hr><hr><br>
 
 <div class="input-group">
+ <input type="text" id="webURL" placeholder="Web URL (https://...)">
   <input type="text" id="shortName" placeholder="Short Name">
-  <input type="text" id="webURL" placeholder="Web URL (https://...)">
+ 
 </div>
 
 <div class="button-group">
@@ -205,19 +201,25 @@
 
 <script>
   let bookmarks = [];
-  let dragSrcIndex = null;
   let isEditMode = false;
+
+  // ── Drag state ──
+  const DRAG_THRESHOLD = 6; // pixels of movement before drag activates
+  let dragSrcIndex = null;
+  let dragPointerStart = null;   // { x, y }
+  let dragActivated = false;
+  let dragTargetEl = null;
 
   // ── Date helper ──
   function getDaysAgo(dateStr) {
-    if (!dateStr || dateStr === "Never") return "Never";
+    if (!dateStr || dateStr === "Never") return "Never opened";
     const lastOpened = new Date(dateStr);
-    if (isNaN(lastOpened.getTime())) return "Never";
+    if (isNaN(lastOpened.getTime())) return "Never opened";
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const bookmarkDate = new Date(lastOpened.getFullYear(), lastOpened.getMonth(), lastOpened.getDate());
     const diffDays = Math.floor((today - bookmarkDate) / 86400000);
-    if (diffDays <= 0) return "today";
+    if (diffDays <= 0) return "Opened today";
     if (diffDays === 1) return "1 day ago";
     return `${diffDays} days ago`;
   }
@@ -237,14 +239,19 @@
     const name = document.getElementById('shortName').value.trim();
     const url  = document.getElementById('webURL').value.trim();
     if (!name || !url) { alert('Please fill both fields.'); return; }
-    // FIX: use toISOString() so dates are always parseable
-    bookmarks.push({ name, url, dateTime: new Date().toISOString(), lastOpened: "Never" });
+    bookmarks.push({
+      name,
+      url,
+      dateTime: new Date().toISOString(),
+      lastOpened: "Never",
+      clickCount: 0          // ← NEW: track clicks
+    });
     displayBookmarks();
     document.getElementById('shortName').value = '';
     document.getElementById('webURL').value = '';
   }
 
-  // ── Display (with drag-and-drop wiring) ──
+  // ── Display ──
   function displayBookmarks() {
     const list1 = document.getElementById('bookmarkList1');
     const list2 = document.getElementById('bookmarkList2');
@@ -254,78 +261,142 @@
     bookmarks.forEach((bm, index) => {
       const div = document.createElement('div');
       div.className = 'bookmark';
-      div.draggable = true;
       div.dataset.index = index;
+      div.style.cursor = 'pointer';
 
+      const count = bm.clickCount || 0;
       div.innerHTML = `
-        <strong>${bm.name}</strong>
-        <small>${getDaysAgo(bm.lastOpened)}</small>
-        <button class="delete-btn" onclick="deleteBookmark(${index}); event.stopPropagation();">Delete</button>
+        <strong title="${bm.name}">
+          ${bm.name}
+
+        </strong>
+        <small>          ${getDaysAgo(bm.lastOpened)}
+		<span class="click-count" title="Times opened"> (${count}&nbsptimes)</span></small>
+        <button class="delete-btn" data-index="${index}">Delete</button>
       `;
 
+      // Show delete button if in edit mode
       if (isEditMode) {
         div.querySelector('.delete-btn').style.display = 'block';
       }
 
-      div.addEventListener('click', (e) => {
-        if (!e.target.classList.contains('delete-btn')) openBookmark(index);
+      // Delete button — stop all propagation
+      div.querySelector('.delete-btn').addEventListener('pointerdown', e => e.stopPropagation());
+      div.querySelector('.delete-btn').addEventListener('click', e => {
+        e.stopPropagation();
+        deleteBookmark(parseInt(e.currentTarget.dataset.index));
       });
 
-      div.addEventListener('dragstart', onDragStart);
-      div.addEventListener('dragend',   onDragEnd);
-      div.addEventListener('dragover',  onDragOver);
-      div.addEventListener('dragleave', onDragLeave);
-      div.addEventListener('drop',      onDrop);
+      // ── Pointer-based drag with threshold ──
+      div.addEventListener('pointerdown', onPointerDown);
 
       if (index % 2 === 0) list1.appendChild(div);
       else                  list2.appendChild(div);
     });
   }
 
-  // ── Drag handlers ──
-  function onDragStart(e) {
+  // ── Pointer handlers (threshold-based drag) ──
+  function onPointerDown(e) {
+    // Ignore if clicking delete button
+    if (e.target.classList.contains('delete-btn')) return;
+
     dragSrcIndex = parseInt(this.dataset.index);
-    this.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', dragSrcIndex);
+    dragPointerStart = { x: e.clientX, y: e.clientY };
+    dragActivated = false;
+    dragTargetEl = null;
+
+    this.setPointerCapture(e.pointerId);
+    this.addEventListener('pointermove', onPointerMove);
+    this.addEventListener('pointerup',   onPointerUp);
+    this.addEventListener('pointercancel', onPointerCancel);
   }
 
-  function onDragEnd(e) {
-    document.querySelectorAll('.bookmark').forEach(el => {
-      el.classList.remove('dragging');
-      el.style.outline = '';
-    });
+  function onPointerMove(e) {
+    if (!dragPointerStart) return;
+
+    const dx = e.clientX - dragPointerStart.x;
+    const dy = e.clientY - dragPointerStart.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (!dragActivated && dist > DRAG_THRESHOLD) {
+      // Enough movement — activate drag mode
+      dragActivated = true;
+      this.classList.add('dragging');
+      this.style.cursor = 'grabbing';
+    }
+
+    if (dragActivated) {
+      // Find element under pointer (excluding the dragged item)
+      const elUnder = getBookmarkUnder(e.clientX, e.clientY, this);
+      if (dragTargetEl && dragTargetEl !== elUnder) {
+        dragTargetEl.classList.remove('drag-over');
+      }
+      if (elUnder) {
+        elUnder.classList.add('drag-over');
+        dragTargetEl = elUnder;
+      } else {
+        dragTargetEl = null;
+      }
+    }
   }
 
-  function onDragOver(e) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    this.style.outline = '2px dashed #17c3b2';
-  }
+  function onPointerUp(e) {
+    cleanup(this, e.pointerId);
 
-  function onDragLeave(e) {
-    this.style.outline = '';
-  }
-
-  function onDrop(e) {
-    e.preventDefault();
-    this.style.outline = '';
-
-    const targetIndex = parseInt(this.dataset.index);
-    if (dragSrcIndex === null || dragSrcIndex === targetIndex) return;
-
-    const temp = bookmarks[dragSrcIndex];
-    bookmarks[dragSrcIndex] = bookmarks[targetIndex];
-    bookmarks[targetIndex]  = temp;
+    if (dragActivated && dragTargetEl) {
+      // Perform swap
+      const targetIndex = parseInt(dragTargetEl.dataset.index);
+      if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
+        const temp = bookmarks[dragSrcIndex];
+        bookmarks[dragSrcIndex] = bookmarks[targetIndex];
+        bookmarks[targetIndex]  = temp;
+        saveBookmarks();
+        displayBookmarks();
+        if (isEditMode) {
+          document.querySelectorAll('.delete-btn').forEach(b => b.style.display = 'block');
+        }
+      }
+    } else if (!dragActivated) {
+      // It was a genuine click — open the bookmark
+      openBookmark(dragSrcIndex);
+    }
 
     dragSrcIndex = null;
+    dragPointerStart = null;
+    dragActivated = false;
+    dragTargetEl = null;
+  }
 
-    saveBookmarks();
-    displayBookmarks();
+  function onPointerCancel(e) {
+    cleanup(this, e.pointerId);
+    dragSrcIndex = null;
+    dragPointerStart = null;
+    dragActivated = false;
+    if (dragTargetEl) dragTargetEl.classList.remove('drag-over');
+    dragTargetEl = null;
+  }
 
-    if (isEditMode) {
-      document.querySelectorAll('.delete-btn').forEach(b => b.style.display = 'block');
+  function cleanup(el, pointerId) {
+    try { el.releasePointerCapture(pointerId); } catch(_) {}
+    el.classList.remove('dragging');
+    el.style.cursor = 'pointer';
+    if (dragTargetEl) dragTargetEl.classList.remove('drag-over');
+    el.removeEventListener('pointermove', onPointerMove);
+    el.removeEventListener('pointerup',   onPointerUp);
+    el.removeEventListener('pointercancel', onPointerCancel);
+  }
+
+  // Returns the bookmark div element under (cx, cy), skipping `exclude`
+  function getBookmarkUnder(cx, cy, exclude) {
+    const all = document.querySelectorAll('.bookmark');
+    for (const el of all) {
+      if (el === exclude) continue;
+      const rect = el.getBoundingClientRect();
+      if (cx >= rect.left && cx <= rect.right && cy >= rect.top && cy <= rect.bottom) {
+        return el;
+      }
     }
+    return null;
   }
 
   // ── CRUD & storage ──
@@ -333,10 +404,15 @@
   function saveBookmarks() { localStorage.setItem('myBookmarks', JSON.stringify(bookmarks)); }
 
   function openBookmark(index) {
-    // FIX: use toISOString() so lastOpened is always parseable
+    if (index === null || index === undefined) return;
     bookmarks[index].lastOpened = new Date().toISOString();
+    bookmarks[index].clickCount = (bookmarks[index].clickCount || 0) + 1;  // ← increment
     saveBookmarks();
     displayBookmarks();
+    // Restore edit mode UI after redraw
+    if (isEditMode) {
+      document.querySelectorAll('.delete-btn').forEach(b => b.style.display = 'block');
+    }
     window.open(bookmarks[index].url, '_blank');
   }
 
@@ -370,13 +446,13 @@
       try {
         const imported = JSON.parse(e.target.result);
         if (Array.isArray(imported)) {
-          // FIX: normalize lastOpened to ISO string on import
           const normalized = imported.map(bm => ({
             name:       bm.name       || '',
             url:        bm.url        || '',
             dateTime:   bm.dateTime   || new Date().toISOString(),
             lastOpened: (bm.lastOpened && !isNaN(new Date(bm.lastOpened).getTime()))
-                        ? new Date(bm.lastOpened).toISOString() : "Never"
+                        ? new Date(bm.lastOpened).toISOString() : "Never",
+            clickCount: bm.clickCount || 0   // ← preserve click count on import
           }));
           bookmarks = bookmarks.concat(normalized);
           saveBookmarks();
@@ -395,9 +471,9 @@
           name:       bm.name       || '',
           url:        bm.url        || '',
           dateTime:   bm.dateTime   || '',
-          // FIX: normalize old locale strings to ISO on load
           lastOpened: (bm.lastOpened && bm.lastOpened !== "Never" && !isNaN(new Date(bm.lastOpened).getTime()))
-                      ? new Date(bm.lastOpened).toISOString() : "Never"
+                      ? new Date(bm.lastOpened).toISOString() : "Never",
+          clickCount: bm.clickCount || 0    // ← load click count, default 0
         }));
       } catch { bookmarks = []; }
       displayBookmarks();
@@ -405,11 +481,10 @@
   }
 
   document.getElementById('webURL').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') addBookmark();
+    if (e.key === 'Enter') addnsave();
   });
 
   loadBookmarks();
 </script>
-
 </body>
 </html>
