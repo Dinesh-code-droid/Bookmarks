@@ -17,8 +17,8 @@
       min-height: 100vh;
     }
     @keyframes gradientBG {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
     h2 {
@@ -51,22 +51,27 @@
     .button-group button:nth-child(4) { background: #3d5af1; }
     .button-group button:nth-child(5) { background: #8338ec; }
 
+    /* FIX 1: min-height theek, height:50px hataya column se */
     #bookdiv {
-	min-height:200px;
       display: flex;
+      min-height: 200px;
       border: 1px solid #ddd;
       border-radius: 2px;
       background: rgba(255,255,255,0.8);
     }
-    .bookmark-column { flex: 1; 
-	height:50px;}
+    .bookmark-column {
+      flex: 1;
+      /* FIX: height:50px HATA DIYA — ye sabse bada bug tha */
+      padding: 4px 0;
+    }
 
     .bookmark {
-      text-align: center;
+      display: block;
+      text-align: left;
       background: #ffffffee;
-      margin: 3px;
+      margin: 4px auto;
       width: 95%;
-      height: 100px;
+      min-height: 60px;
       border-left: 4px solid #17c3b2;
       border-radius: 10px;
       box-shadow: 0 3px 6px rgba(0,0,0,0.15);
@@ -75,7 +80,7 @@
       cursor: pointer;
       user-select: none;
       -webkit-user-select: none;
-      touch-action: none; /* needed for pointer events on mobile */
+      touch-action: none;
     }
     .bookmark:hover { transform: scale(1.015); }
     .bookmark.dragging {
@@ -88,7 +93,7 @@
     .bookmark strong {
       font-size: 14px;
       display: block;
-      padding: 8px 70px 0 8px;
+      padding: 10px 72px 2px 10px;
       color: #111;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -96,6 +101,7 @@
     }
     .bookmark small {
       display: block;
+      padding: 0 10px 8px 10px;
       color: #888;
       font-size: 11px;
     }
@@ -122,10 +128,12 @@
     }
     .bookmark .delete-btn:hover { background: #d1131a; }
 
+    /* FIX 2: Mobile layout — column direction for stacking */
     @media (max-width: 500px) {
-      #bookdiv { flex-direction: row; }
-      .bookmark-column { max-width: 50%; margin: 10px 0; }
+      #bookdiv { flex-direction: column; }
+      .bookmark-column { width: 100%; }
       .button-group button { padding: 10px 14px; font-size: 14px; }
+      #searchBox { width: 60%; }
     }
 
     #searchBox {
@@ -164,7 +172,7 @@
 <button id="buttons" onclick="searchGoogle()">Search</button>
 <br><hr><hr><br>
 
-<p id="dragHint">☰ Hold &amp; drag to reorder · Click to open</p>
+<p id="dragHint">☰ Hold &amp; drag to reorder &middot; Click to open</p>
 
 <div id="bookdiv">
   <div class="bookmark-column" id="bookmarkList1"></div>
@@ -189,97 +197,100 @@
 <input type="file" id="importFile" accept=".txt" onchange="importBookmarks()" style="display:none;">
 
 <script>
-  let bookmarks = [];
-  let isEditMode = false;
+  var bookmarks = [];
+  var isEditMode = false;
 
-  // ── Drag state ──
-  const DRAG_THRESHOLD = 6;
-  let dragSrcIndex     = null;
-  let dragSrcEl        = null;
-  let dragPointerStart = null;
-  let dragActivated    = false;
-  let dragTargetEl     = null;
+  // Drag state
+  var DRAG_THRESHOLD  = 6;
+  var dragSrcIndex    = null;
+  var dragSrcEl       = null;
+  var dragPointerStart= null;
+  var dragActivated   = false;
+  var dragTargetEl    = null;
 
-  // ── Date helper ──
+  /* ── Date helper ── */
   function getDaysAgo(dateStr) {
-    if (!dateStr || dateStr === "Never") return "Never opened";
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return "Never opened";
-    const today = new Date(); today.setHours(0,0,0,0);
-    const bDay  = new Date(d); bDay.setHours(0,0,0,0);
-    const diff  = Math.floor((today - bDay) / 86400000);
-    if (diff <= 0) return "Opened today";
-    if (diff === 1) return "1 day ago";
-    return diff + " days ago";
+    if (!dateStr || dateStr === 'Never') return 'Never opened';
+    var d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 'Never opened';
+    var today = new Date(); today.setHours(0,0,0,0);
+    var bDay  = new Date(d); bDay.setHours(0,0,0,0);
+    var diff  = Math.floor((today - bDay) / 86400000);
+    if (diff <= 0) return 'Opened today';
+    if (diff === 1) return '1 day ago';
+    return diff + ' days ago';
   }
 
-  // ── Search ──
+  /* ── Google Search ── */
   function searchGoogle() {
-    const query = document.getElementById('searchBox').value;
-    if (query.trim()) {
-      window.location.href = "https://www.google.com/search?q=" + encodeURIComponent(query);
+    var q = document.getElementById('searchBox').value.trim();
+    if (q) {
+      window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
     } else {
-      alert("Please enter a search term.");
+      alert('Please enter a search term.');
     }
   }
 
-  // ── Add ──
+  /* ── Add bookmark ── */
   function addBookmark() {
-    const name = document.getElementById('shortName').value.trim();
-    const url  = document.getElementById('webURL').value.trim();
+    var name = document.getElementById('shortName').value.trim();
+    var url  = document.getElementById('webURL').value.trim();
     if (!name || !url) { alert('Please fill both fields.'); return false; }
-    bookmarks.push({
-      name, url,
-      dateTime: new Date().toISOString(),
-      lastOpened: "Never",
-      clickCount: 0
-    });
-    displayBookmarks();
+    // Auto-add https:// if missing
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    bookmarks.push({ name: name, url: url,
+      dateTime: new Date().toISOString(), lastOpened: 'Never', clickCount: 0 });
     document.getElementById('shortName').value = '';
     document.getElementById('webURL').value    = '';
+    displayBookmarks();
     return true;
   }
   function addnsave() { if (addBookmark()) saveBookmarks(); }
 
-  // ── Display ──
+  /* ── Display ── */
   function displayBookmarks() {
-    const list1 = document.getElementById('bookmarkList1');
-    const list2 = document.getElementById('bookmarkList2');
+    var list1 = document.getElementById('bookmarkList1');
+    var list2 = document.getElementById('bookmarkList2');
     list1.innerHTML = ''; list2.innerHTML = '';
 
     bookmarks.forEach(function(bm, index) {
-      const div = document.createElement('div');
+      var div = document.createElement('div');
       div.className = 'bookmark';
       div.dataset.index = index;
 
-      const count = bm.clickCount || 0;
+      var count = bm.clickCount || 0;
       div.innerHTML =
-        '<strong title="' + bm.name + '">' + bm.name + '</strong>' +
+        '<strong title="' + escHtml(bm.name) + '">' + escHtml(bm.name) + '</strong>' +
         '<small>' + getDaysAgo(bm.lastOpened) +
         ' <span class="click-count">(' + count + ' times)</span></small>' +
         '<button class="delete-btn" data-index="' + index + '">Delete</button>';
 
       if (isEditMode) div.querySelector('.delete-btn').style.display = 'block';
 
-      // Delete: block pointer so it never triggers drag/open
+      // Delete button — must NOT trigger drag or open
       var btn = div.querySelector('.delete-btn');
-      btn.addEventListener('pointerdown', function(e) { e.stopPropagation(); e.preventDefault(); });
+      btn.addEventListener('pointerdown', function(e) {
+        e.stopPropagation(); e.preventDefault();
+      });
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
-        deleteBookmark(parseInt(e.currentTarget.dataset.index));
+        deleteBookmark(parseInt(this.dataset.index));
       });
 
-      // Drag/click on the card
       div.addEventListener('pointerdown', onPointerDown);
-
       (index % 2 === 0 ? list1 : list2).appendChild(div);
     });
   }
 
-  // ── Pointer down — start tracking ──
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  /* ── Pointer: down ── */
   function onPointerDown(e) {
     if (e.target.classList.contains('delete-btn')) return;
-    // Desktop: only left mouse button
     if (e.pointerType === 'mouse' && e.button !== 0) return;
 
     dragSrcIndex     = parseInt(this.dataset.index);
@@ -288,13 +299,13 @@
     dragActivated    = false;
     dragTargetEl     = null;
 
-    // Use document-level listeners — NO setPointerCapture (breaks desktop clicks)
+    // document-level — NO setPointerCapture (breaks desktop clicks)
     document.addEventListener('pointermove',   onDocMove);
     document.addEventListener('pointerup',     onDocUp);
     document.addEventListener('pointercancel', onDocCancel);
   }
 
-  // ── Move — activate drag after threshold ──
+  /* ── Pointer: move ── */
   function onDocMove(e) {
     if (dragSrcIndex === null) return;
     var dist = Math.hypot(e.clientX - dragPointerStart.x, e.clientY - dragPointerStart.y);
@@ -305,7 +316,6 @@
       dragSrcEl.style.cursor = 'grabbing';
       document.body.style.userSelect = 'none';
     }
-
     if (dragActivated) {
       var under = bookmarkUnder(e.clientX, e.clientY, dragSrcEl);
       if (dragTargetEl && dragTargetEl !== under) dragTargetEl.classList.remove('drag-over');
@@ -314,7 +324,7 @@
     }
   }
 
-  // ── Pointer up — click OR drop ──
+  /* ── Pointer: up — decide click or drop ── */
   function onDocUp(e) {
     removeDocListeners();
     document.body.style.userSelect = '';
@@ -323,17 +333,17 @@
     var wasClick   = !dragActivated;
     var dropTarget = dragTargetEl;
 
-    // Reset visual state
-    if (dragSrcEl)   { dragSrcEl.classList.remove('dragging'); dragSrcEl.style.cursor = 'pointer'; }
-    if (dragTargetEl) dragTargetEl.classList.remove('drag-over');
+    // Clean visuals
+    if (dragSrcEl)    { dragSrcEl.classList.remove('dragging'); dragSrcEl.style.cursor = 'pointer'; }
+    if (dragTargetEl)   dragTargetEl.classList.remove('drag-over');
 
-    // Clear all state BEFORE side-effects
+    // Reset state BEFORE any side-effects
     dragSrcIndex = null; dragSrcEl = null;
     dragPointerStart = null; dragActivated = false; dragTargetEl = null;
 
     if (wasClick && srcIndex !== null) {
-      // window.open MUST be called first — synchronously in the pointer event —
-      // so browsers (GitHub Pages, Netlify, etc.) don't block it as a popup.
+      // FIX: window.open FIRST — keeps browser's "trusted gesture" token alive.
+      // State updates (save/display) happen after. Works on GitHub Pages & all HTTPS hosts.
       var url = bookmarks[srcIndex].url;
       var win = window.open(url, '_blank');
       if (!win) window.location.href = url; // fallback if popup blocked
@@ -360,8 +370,8 @@
   function onDocCancel(e) {
     removeDocListeners();
     document.body.style.userSelect = '';
-    if (dragSrcEl)   { dragSrcEl.classList.remove('dragging'); dragSrcEl.style.cursor = 'pointer'; }
-    if (dragTargetEl) dragTargetEl.classList.remove('drag-over');
+    if (dragSrcEl)    { dragSrcEl.classList.remove('dragging'); dragSrcEl.style.cursor = 'pointer'; }
+    if (dragTargetEl)   dragTargetEl.classList.remove('drag-over');
     dragSrcIndex = null; dragSrcEl = null;
     dragPointerStart = null; dragActivated = false; dragTargetEl = null;
   }
@@ -382,8 +392,11 @@
     return null;
   }
 
-  // ── Storage & CRUD ──
-  function saveBookmarks() { localStorage.setItem('myBookmarks', JSON.stringify(bookmarks)); }
+  /* ── Storage & CRUD ── */
+  function saveBookmarks() {
+    try { localStorage.setItem('myBookmarks', JSON.stringify(bookmarks)); }
+    catch(e) { alert('Storage error: ' + e.message); }
+  }
 
   function deleteBookmark(index) {
     bookmarks.splice(index, 1);
@@ -404,7 +417,9 @@
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'bookmarks.txt';
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
   }
 
   function importBookmarks() {
@@ -421,7 +436,7 @@
               url:        bm.url        || '',
               dateTime:   bm.dateTime   || new Date().toISOString(),
               lastOpened: (bm.lastOpened && !isNaN(new Date(bm.lastOpened).getTime()))
-                          ? new Date(bm.lastOpened).toISOString() : "Never",
+                          ? new Date(bm.lastOpened).toISOString() : 'Never',
               clickCount: bm.clickCount || 0
             };
           });
@@ -429,29 +444,35 @@
           saveBookmarks();
           displayBookmarks();
         } else { alert('Invalid file format.'); }
-      } catch(err) { alert('Error reading file.'); }
+      } catch(err) { alert('Error reading file: ' + err.message); }
     };
     reader.readAsText(file);
+    // Reset so same file can be imported again if needed
+    document.getElementById('importFile').value = '';
   }
 
   function loadBookmarks() {
-    var stored = localStorage.getItem('myBookmarks');
-    if (!stored) return;
     try {
+      var stored = localStorage.getItem('myBookmarks');
+      if (!stored) return;
       bookmarks = JSON.parse(stored).map(function(bm) {
         return {
           name:       bm.name       || '',
           url:        bm.url        || '',
           dateTime:   bm.dateTime   || '',
-          lastOpened: (bm.lastOpened && bm.lastOpened !== "Never" && !isNaN(new Date(bm.lastOpened).getTime()))
-                      ? new Date(bm.lastOpened).toISOString() : "Never",
+          lastOpened: (bm.lastOpened && bm.lastOpened !== 'Never' &&
+                       !isNaN(new Date(bm.lastOpened).getTime()))
+                      ? new Date(bm.lastOpened).toISOString() : 'Never',
           clickCount: bm.clickCount || 0
         };
       });
-    } catch(err) { bookmarks = []; }
+    } catch(e) { bookmarks = []; }
     displayBookmarks();
   }
 
+  document.getElementById('shortName').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') addnsave();
+  });
   document.getElementById('webURL').addEventListener('keypress', function(e) {
     if (e.key === 'Enter') addnsave();
   });
