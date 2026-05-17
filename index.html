@@ -240,8 +240,16 @@
       // is async and the browser security sandbox blocks cross-origin navigation
       // on a pre-opened tab in some configurations.
       var url=bookmarks[srcIndex].url;
-      var w=window.open(url,'_blank');
-      if (!w) { window.location.href=url; } // popup blocker fallback
+      // Use <a> click instead of window.open — this works for:
+      // • https:// links (all browsers, all hosts)
+      // • file:/// local HTML files (when page itself is a local file)
+      var a=document.createElement('a');
+      a.href=url;
+      a.target='_blank';
+      a.rel='noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
 
       bookmarks[srcIndex].lastOpened=new Date().toISOString();
       bookmarks[srcIndex].clickCount=(bookmarks[srcIndex].clickCount||0)+1;
