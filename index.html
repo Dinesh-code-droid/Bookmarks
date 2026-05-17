@@ -46,7 +46,7 @@
       box-shadow:0 3px 6px rgba(0,0,0,0.15);
       transition:transform 0.15s, opacity 0.15s;
       position:relative; cursor:pointer;
-      user-select:none; -webkit-user-select:none; touch-action:none;
+      user-select:none; -webkit-user-select:none; touch-action:pan-y;
     }
     .bookmark:hover { transform:scale(1.015); }
     .bookmark.dragging { opacity:0.4; transform:scale(1.03); box-shadow:0 8px 20px rgba(0,0,0,0.25); }
@@ -89,7 +89,7 @@
 <button id="buttons" onclick="searchGoogle()">Search</button>
 <br><hr><hr><br>
 
-<p id="dragHint">☰ Hold &amp; drag to reorder &middot; Click to open</p>
+<p id="dragHint">☰ Long-press &amp; drag to reorder &middot; Tap/click to open</p>
 <div id="bookdiv">
   <div class="bookmark-column" id="bookmarkList1"></div>
   <div class="bookmark-column" id="bookmarkList2"></div>
@@ -114,7 +114,10 @@
   var isEditMode = false;
 
   // Drag state
-  var DRAG_THRESHOLD   = 8;
+  var DRAG_THRESHOLD   = 12;  // higher = less accidental drag
+  var DRAG_ANGLE_MAX   = 45;  // degrees — mostly horizontal = drag, mostly vertical = scroll
+  var LONG_PRESS_MS    = 400; // long press also activates drag (for touch)
+  var longPressTimer   = null;
   var dragSrcIndex     = null;
   var dragSrcEl        = null;
   var dragPointerStart = null;
@@ -194,6 +197,19 @@
     dragActivated    = false;
     dragTargetEl     = null;
 
+    // Long-press activates drag (good for touch users trying to scroll normally)
+    var self = this;
+    longPressTimer = setTimeout(function() {
+      if (!dragActivated) {
+        dragActivated = true;
+        dragSrcEl.classList.add('dragging');
+        dragSrcEl.style.cursor = 'grabbing';
+        document.body.style.userSelect = 'none';
+        // Vibrate on mobile to signal drag started
+        if (navigator.vibrate) navigator.vibrate(40);
+      }
+    }, LONG_PRESS_MS);
+
     document.addEventListener('pointermove',   onDocMove);
     document.addEventListener('pointerup',     onDocUp);
     document.addEventListener('pointercancel', onDocCancel);
@@ -202,13 +218,29 @@
   // ── POINTER MOVE ──
   function onDocMove(e) {
     if (dragSrcIndex===null) return;
-    var dist=Math.hypot(e.clientX-dragPointerStart.x, e.clientY-dragPointerStart.y);
-    if (!dragActivated && dist>DRAG_THRESHOLD) {
-      dragActivated=true;
+    var dx = e.clientX - dragPointerStart.x;
+    var dy = e.clientY - dragPointerStart.y;
+    var dist = Math.hypot(dx, dy);
+
+    if (!dragActivated && dist > DRAG_THRESHOLD) {
+      // Check angle: if mostly vertical → it's a scroll, cancel drag tracking
+      var angle = Math.abs(Math.atan2(Math.abs(dy), Math.abs(dx)) * 180 / Math.PI);
+      if (angle > DRAG_ANGLE_MAX) {
+        // User is scrolling vertically — abort drag entirely
+        clearTimeout(longPressTimer); longPressTimer = null;
+        removeDocListeners();
+        dragSrcIndex = null; dragSrcEl = null;
+        dragPointerStart = null; dragActivated = false; dragTargetEl = null;
+        return;
+      }
+      // Mostly horizontal — it's a drag
+      clearTimeout(longPressTimer); longPressTimer = null;
+      dragActivated = true;
       dragSrcEl.classList.add('dragging');
-      dragSrcEl.style.cursor='grabbing';
-      document.body.style.userSelect='none';
+      dragSrcEl.style.cursor = 'grabbing';
+      document.body.style.userSelect = 'none';
     }
+
     if (dragActivated) {
       var under=bookmarkUnder(e.clientX,e.clientY,dragSrcEl);
       if (dragTargetEl && dragTargetEl!==under) dragTargetEl.classList.remove('drag-over');
@@ -219,6 +251,7 @@
 
   // ── POINTER UP ──
   function onDocUp(e) {
+    clearTimeout(longPressTimer); longPressTimer = null;
     removeDocListeners();
     document.body.style.userSelect='';
 
@@ -271,6 +304,7 @@
   }
 
   function onDocCancel(e) {
+    clearTimeout(longPressTimer); longPressTimer = null;
     removeDocListeners();
     document.body.style.userSelect='';
     if (dragSrcEl)   {dragSrcEl.classList.remove('dragging'); dragSrcEl.style.cursor='pointer';}
