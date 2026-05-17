@@ -8,114 +8,98 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Poppins', sans-serif;
-      padding: 10px;
+      font-family: 'Poppins', sans-serif; padding: 10px;
       background: linear-gradient(135deg, #FFFFFF, #F7FFFD, #FFFFFF);
-      background-size: 600% 600%;
-      animation: gradientBG 10s ease infinite;
-      color: #222;
-      min-height: 100vh;
+      background-size: 600% 600%; animation: gradientBG 10s ease infinite;
+      color: #222; min-height: 100vh;
     }
     @keyframes gradientBG {
-      0%   { background-position: 0% 50%; }
-      50%  { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
+      0%{ background-position:0% 50%; } 50%{ background-position:100% 50%; } 100%{ background-position:0% 50%; }
     }
-    h2 { text-align: center; margin-bottom: 20px; color: #00002F; text-shadow: 1px 1px 3px rgba(0,0,0,0.4); }
-    .input-group { margin-bottom: 12px; }
+    h2 { text-align:center; margin-bottom:20px; color:#00002F; text-shadow:1px 1px 3px rgba(0,0,0,0.4); }
+    .input-group { margin-bottom:12px; }
     input[type="text"] {
-      width: 100%; padding: 14px; border: none; border-radius: 12px;
-      margin-bottom: 14px; font-size: 16px; background: #fff;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      width:100%; padding:14px; border:none; border-radius:12px;
+      margin-bottom:14px; font-size:16px; background:#fff;
+      box-shadow:0 4px 8px rgba(0,0,0,0.1);
     }
-    .button-group { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 14px; margin-bottom: 20px; }
+    .button-group { display:flex; overflow-x:auto; gap:10px; padding-bottom:14px; margin-bottom:20px; }
     .button-group button {
-      flex: 0 0 auto; padding: 12px 18px; font-size: 16px;
-      border: none; border-radius: 50px; color: #fff;
-      transition: transform 0.2s; box-shadow: 0 3px 6px rgba(0,0,0,0.2); cursor: pointer;
+      flex:0 0 auto; padding:12px 18px; font-size:16px; border:none;
+      border-radius:50px; color:#fff; transition:transform 0.2s;
+      box-shadow:0 3px 6px rgba(0,0,0,0.2); cursor:pointer;
     }
-    .button-group button:hover { transform: scale(1.05); }
-    .button-group button:nth-child(1) { background: #ff3c38; }
-    .button-group button:nth-child(2) { background: #ffa534; }
-    .button-group button:nth-child(3) { background: #17c3b2; }
-    .button-group button:nth-child(4) { background: #3d5af1; }
-    .button-group button:nth-child(5) { background: #8338ec; }
+    .button-group button:hover { transform:scale(1.05); }
+    .button-group button:nth-child(1){ background:#ff3c38; }
+    .button-group button:nth-child(2){ background:#ffa534; }
+    .button-group button:nth-child(3){ background:#17c3b2; }
+    .button-group button:nth-child(4){ background:#3d5af1; }
+    .button-group button:nth-child(5){ background:#8338ec; }
 
-    #bookdiv {
-      display: flex; min-height: 200px;
-      border: 1px solid #ddd; border-radius: 2px;
-      background: rgba(255,255,255,0.8);
-    }
-    .bookmark-column { flex: 1; padding: 4px 0; }
+    #bookdiv { display:flex; min-height:200px; border:1px solid #ddd; border-radius:2px; background:rgba(255,255,255,0.8); }
+    .bookmark-column { flex:1; padding:4px 0; }
 
     .bookmark {
-      display: block; text-align: left;
-      background: #ffffffee; margin: 4px auto; width: 95%; min-height: 60px;
-      border-left: 4px solid #17c3b2; border-radius: 10px;
-      box-shadow: 0 3px 6px rgba(0,0,0,0.15);
-      transition: transform 0.15s, opacity 0.15s;
-      position: relative; cursor: pointer;
-      user-select: none; -webkit-user-select: none;
-      touch-action: none;
+      display:block; text-align:left; background:#ffffffee;
+      margin:4px auto; width:95%; min-height:60px;
+      border-left:4px solid #17c3b2; border-radius:10px;
+      box-shadow:0 3px 6px rgba(0,0,0,0.15);
+      transition:transform 0.15s, opacity 0.15s;
+      position:relative; cursor:pointer;
+      user-select:none; -webkit-user-select:none; touch-action:none;
     }
-    .bookmark:hover { transform: scale(1.015); }
-    .bookmark.dragging { opacity: 0.4; transform: scale(1.03); box-shadow: 0 8px 20px rgba(0,0,0,0.25); }
-    .bookmark.drag-over { outline: 2px dashed #17c3b2; }
+    .bookmark:hover { transform:scale(1.015); }
+    .bookmark.dragging { opacity:0.4; transform:scale(1.03); box-shadow:0 8px 20px rgba(0,0,0,0.25); }
+    .bookmark.drag-over { outline:2px dashed #17c3b2; }
 
     .bookmark strong {
-      font-size: 14px; display: block;
-      padding: 10px 72px 2px 10px;
-      color: #111; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      font-size:14px; display:block; padding:10px 72px 2px 10px;
+      color:#111; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     }
-    .bookmark small { display: block; padding: 0 10px 8px 10px; color: #888; font-size: 11px; }
-    .click-count { color: #17c3b2; font-size: 11px; font-weight: 600; }
+    .bookmark small { display:block; padding:0 10px 8px 10px; color:#888; font-size:11px; }
+    .click-count { color:#17c3b2; font-size:11px; font-weight:600; }
 
     .bookmark .delete-btn {
-      position: absolute; top: 50%; transform: translateY(-50%); right: 8px;
-      background: #f51720; border: none; padding: 5px 9px; border-radius: 8px;
-      color: #fff; font-size: 12px; display: none; cursor: pointer; z-index: 10; touch-action: auto;
+      position:absolute; top:50%; transform:translateY(-50%); right:8px;
+      background:#f51720; border:none; padding:5px 9px; border-radius:8px;
+      color:#fff; font-size:12px; display:none; cursor:pointer; z-index:10; touch-action:auto;
     }
-    .bookmark .delete-btn:hover { background: #d1131a; }
+    .bookmark .delete-btn:hover { background:#d1131a; }
 
-    @media (max-width: 500px) {
-      #bookdiv { flex-direction: column; }
-      .bookmark-column { width: 100%; }
-      .button-group button { padding: 10px 14px; font-size: 14px; }
-      #searchBox { width: 60%; }
+    @media (max-width:500px) {
+      #bookdiv { flex-direction:column; }
+      .bookmark-column { width:100%; }
+      .button-group button { padding:10px 14px; font-size:14px; }
+      #searchBox { width:60%; }
     }
-
-    #searchBox { padding: 10px 20px; width: 280px; border-radius: 50px; border: 1px solid #ccc; font-size: 18px; }
+    #searchBox { padding:10px 20px; width:280px; border-radius:50px; border:1px solid #ccc; font-size:18px; }
     #buttons {
-      padding: 10px 20px; font-size: 18px; background: #FF3D00; color: white;
-      border: none; border-radius: 50px; margin-left: 10px; width: 90px; cursor: pointer;
+      padding:10px 20px; font-size:18px; background:#FF3D00; color:white;
+      border:none; border-radius:50px; margin-left:10px; width:90px; cursor:pointer;
     }
-    #buttons:hover { background: #45a049; }
-    #dragHint { text-align: center; font-size: 12px; color: #aaa; margin-bottom: 4px; }
+    #buttons:hover { background:#45a049; }
+    #dragHint { text-align:center; font-size:12px; color:#aaa; margin-bottom:4px; }
   </style>
 </head>
 <body>
 
 <h2>Bookmark Diary</h2>
-
 <input type="text" id="searchBox" placeholder="google search...."
   onkeydown="if(event.key==='Enter') searchGoogle()">
 <button id="buttons" onclick="searchGoogle()">Search</button>
 <br><hr><hr><br>
 
 <p id="dragHint">☰ Hold &amp; drag to reorder &middot; Click to open</p>
-
 <div id="bookdiv">
   <div class="bookmark-column" id="bookmarkList1"></div>
   <div class="bookmark-column" id="bookmarkList2"></div>
 </div>
-
 <br><hr><hr><br>
 
 <div class="input-group">
   <input type="text" id="webURL"    placeholder="Web URL (https://...)">
   <input type="text" id="shortName" placeholder="Short Name">
 </div>
-
 <div class="button-group">
   <button onclick="addnsave()">Add</button>
   <button onclick="toggleDeleteButtons()">Edit</button>
@@ -123,12 +107,11 @@
   <button onclick="exportBookmarks()">Export</button>
   <button onclick="window.print()">Print</button>
 </div>
-
 <input type="file" id="importFile" accept=".txt" onchange="importBookmarks()" style="display:none;">
 
 <script>
-  var bookmarks    = [];
-  var isEditMode   = false;
+  var bookmarks  = [];
+  var isEditMode = false;
 
   // Drag state
   var DRAG_THRESHOLD   = 8;
@@ -138,192 +121,154 @@
   var dragActivated    = false;
   var dragTargetEl     = null;
 
-  // KEY FIX: pre-opened window handle
-  // On pointerdown we open a blank tab immediately (trusted gesture).
-  // On pointerup: if it was a click → set URL; if it was a drag → close it.
-  var preOpenedWin = null;
-
-  /* ── helpers ── */
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
                     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
   function getDaysAgo(dateStr) {
-    if (!dateStr || dateStr === 'Never') return 'Never opened';
+    if (!dateStr || dateStr==='Never') return 'Never opened';
     var d = new Date(dateStr);
     if (isNaN(d.getTime())) return 'Never opened';
-    var today = new Date(); today.setHours(0,0,0,0);
-    var bDay  = new Date(d); bDay.setHours(0,0,0,0);
-    var diff  = Math.floor((today - bDay) / 86400000);
-    if (diff <= 0) return 'Opened today';
-    if (diff === 1) return '1 day ago';
-    return diff + ' days ago';
+    var today=new Date(); today.setHours(0,0,0,0);
+    var bDay=new Date(d); bDay.setHours(0,0,0,0);
+    var diff=Math.floor((today-bDay)/86400000);
+    if (diff<=0) return 'Opened today';
+    if (diff===1) return '1 day ago';
+    return diff+' days ago';
   }
 
-  /* ── search ── */
   function searchGoogle() {
-    var q = document.getElementById('searchBox').value.trim();
-    if (q) window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank');
+    var q=document.getElementById('searchBox').value.trim();
+    if (q) window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank');
     else   alert('Please enter a search term.');
   }
 
-  /* ── add ── */
   function addBookmark() {
-    var name = document.getElementById('shortName').value.trim();
-    var url  = document.getElementById('webURL').value.trim();
-    if (!name || !url) { alert('Please fill both fields.'); return false; }
-    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-    bookmarks.push({ name:name, url:url,
-      dateTime:new Date().toISOString(), lastOpened:'Never', clickCount:0 });
-    document.getElementById('shortName').value = '';
-    document.getElementById('webURL').value    = '';
+    var name=document.getElementById('shortName').value.trim();
+    var url =document.getElementById('webURL').value.trim();
+    if (!name||!url){ alert('Please fill both fields.'); return false; }
+    if (!/^https?:\/\//i.test(url)) url='https://'+url;
+    bookmarks.push({name:name,url:url,dateTime:new Date().toISOString(),lastOpened:'Never',clickCount:0});
+    document.getElementById('shortName').value='';
+    document.getElementById('webURL').value='';
     displayBookmarks();
     return true;
   }
-  function addnsave() { if (addBookmark()) saveBookmarks(); }
+  function addnsave(){ if(addBookmark()) saveBookmarks(); }
 
-  /* ── display ── */
   function displayBookmarks() {
-    var list1 = document.getElementById('bookmarkList1');
-    var list2 = document.getElementById('bookmarkList2');
-    list1.innerHTML = ''; list2.innerHTML = '';
-
-    bookmarks.forEach(function(bm, index) {
-      var div = document.createElement('div');
-      div.className = 'bookmark';
-      div.dataset.index = index;
-
-      var count = bm.clickCount || 0;
-      div.innerHTML =
-        '<strong title="' + escHtml(bm.name) + '">' + escHtml(bm.name) + '</strong>' +
-        '<small>' + getDaysAgo(bm.lastOpened) +
-        ' <span class="click-count">(' + count + ' times)</span></small>' +
-        '<button class="delete-btn" data-index="' + index + '">Delete</button>';
-
-      if (isEditMode) div.querySelector('.delete-btn').style.display = 'block';
-
-      var btn = div.querySelector('.delete-btn');
-      btn.addEventListener('pointerdown', function(e) { e.stopPropagation(); e.preventDefault(); });
-      btn.addEventListener('click', function(e) {
+    var list1=document.getElementById('bookmarkList1');
+    var list2=document.getElementById('bookmarkList2');
+    list1.innerHTML=''; list2.innerHTML='';
+    bookmarks.forEach(function(bm,index){
+      var div=document.createElement('div');
+      div.className='bookmark';
+      div.dataset.index=index;
+      var count=bm.clickCount||0;
+      div.innerHTML=
+        '<strong title="'+escHtml(bm.name)+'">'+escHtml(bm.name)+'</strong>'+
+        '<small>'+getDaysAgo(bm.lastOpened)+
+        ' <span class="click-count">('+count+' times)</span></small>'+
+        '<button class="delete-btn" data-index="'+index+'">Delete</button>';
+      if (isEditMode) div.querySelector('.delete-btn').style.display='block';
+      var btn=div.querySelector('.delete-btn');
+      btn.addEventListener('pointerdown',function(e){e.stopPropagation();e.preventDefault();});
+      btn.addEventListener('click',function(e){
         e.stopPropagation();
         deleteBookmark(parseInt(this.dataset.index));
       });
-
       div.addEventListener('pointerdown', onPointerDown);
-      (index % 2 === 0 ? list1 : list2).appendChild(div);
+      (index%2===0?list1:list2).appendChild(div);
     });
   }
 
-  /* ── POINTER DOWN ──
-     THE KEY FIX:
-     Browser only allows window.open() during a trusted user-gesture event.
-     pointerdown IS a trusted event. pointerup is NOT always trusted on desktop
-     browsers (Chrome/Edge/Firefox on Windows treat it as "too late").
-     Solution: open a blank tab RIGHT NOW in pointerdown, save the handle.
-     Then in pointerup: if click → assign URL to that tab.
-                        if drag  → close that blank tab.
-  ── */
+  // ── POINTER DOWN ──
   function onPointerDown(e) {
     if (e.target.classList.contains('delete-btn')) return;
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (e.pointerType==='mouse' && e.button!==0) return;
 
     dragSrcIndex     = parseInt(this.dataset.index);
     dragSrcEl        = this;
-    dragPointerStart = { x: e.clientX, y: e.clientY };
+    dragPointerStart = {x:e.clientX, y:e.clientY};
     dragActivated    = false;
     dragTargetEl     = null;
-
-    // Open blank tab NOW while gesture is trusted
-    preOpenedWin = window.open('', '_blank');
 
     document.addEventListener('pointermove',   onDocMove);
     document.addEventListener('pointerup',     onDocUp);
     document.addEventListener('pointercancel', onDocCancel);
   }
 
-  /* ── POINTER MOVE ── */
+  // ── POINTER MOVE ──
   function onDocMove(e) {
-    if (dragSrcIndex === null) return;
-    var dist = Math.hypot(e.clientX - dragPointerStart.x, e.clientY - dragPointerStart.y);
-
-    if (!dragActivated && dist > DRAG_THRESHOLD) {
-      dragActivated = true;
+    if (dragSrcIndex===null) return;
+    var dist=Math.hypot(e.clientX-dragPointerStart.x, e.clientY-dragPointerStart.y);
+    if (!dragActivated && dist>DRAG_THRESHOLD) {
+      dragActivated=true;
       dragSrcEl.classList.add('dragging');
-      dragSrcEl.style.cursor = 'grabbing';
-      document.body.style.userSelect = 'none';
-
-      // User is dragging — close the pre-opened blank tab immediately
-      if (preOpenedWin) { preOpenedWin.close(); preOpenedWin = null; }
+      dragSrcEl.style.cursor='grabbing';
+      document.body.style.userSelect='none';
     }
-
     if (dragActivated) {
-      var under = bookmarkUnder(e.clientX, e.clientY, dragSrcEl);
-      if (dragTargetEl && dragTargetEl !== under) dragTargetEl.classList.remove('drag-over');
-      dragTargetEl = under;
+      var under=bookmarkUnder(e.clientX,e.clientY,dragSrcEl);
+      if (dragTargetEl && dragTargetEl!==under) dragTargetEl.classList.remove('drag-over');
+      dragTargetEl=under;
       if (dragTargetEl) dragTargetEl.classList.add('drag-over');
     }
   }
 
-  /* ── POINTER UP ── */
+  // ── POINTER UP ──
   function onDocUp(e) {
     removeDocListeners();
-    document.body.style.userSelect = '';
+    document.body.style.userSelect='';
 
-    var srcIndex   = dragSrcIndex;
-    var wasClick   = !dragActivated;
-    var dropTarget = dragTargetEl;
+    var srcIndex  =dragSrcIndex;
+    var wasClick  =!dragActivated;
+    var dropTarget=dragTargetEl;
 
-    if (dragSrcEl)   { dragSrcEl.classList.remove('dragging'); dragSrcEl.style.cursor = 'pointer'; }
+    if (dragSrcEl)   {dragSrcEl.classList.remove('dragging'); dragSrcEl.style.cursor='pointer';}
     if (dragTargetEl)  dragTargetEl.classList.remove('drag-over');
 
-    dragSrcIndex = null; dragSrcEl = null;
-    dragPointerStart = null; dragActivated = false; dragTargetEl = null;
+    dragSrcIndex=null; dragSrcEl=null;
+    dragPointerStart=null; dragActivated=false; dragTargetEl=null;
 
-    if (wasClick && srcIndex !== null) {
-      // Give the pre-opened tab the real URL
-      var url = bookmarks[srcIndex].url;
-      if (preOpenedWin && !preOpenedWin.closed) {
-        preOpenedWin.location.href = url;
-      } else {
-        // Fallback: try again (may be blocked by popup-blocker — rare)
-        var w = window.open(url, '_blank');
-        if (!w) window.location.href = url;
-      }
-      preOpenedWin = null;
+    if (wasClick && srcIndex!==null) {
+      // ── THE REAL FIX ──
+      // pointerup is still inside the same user-gesture call stack on all browsers.
+      // window.open(REAL_URL) here works perfectly — no blank tab needed.
+      // The blank-tab trick caused the blank page because location.href assignment
+      // is async and the browser security sandbox blocks cross-origin navigation
+      // on a pre-opened tab in some configurations.
+      var url=bookmarks[srcIndex].url;
+      var w=window.open(url,'_blank');
+      if (!w) { window.location.href=url; } // popup blocker fallback
 
-      bookmarks[srcIndex].lastOpened = new Date().toISOString();
-      bookmarks[srcIndex].clickCount = (bookmarks[srcIndex].clickCount || 0) + 1;
+      bookmarks[srcIndex].lastOpened=new Date().toISOString();
+      bookmarks[srcIndex].clickCount=(bookmarks[srcIndex].clickCount||0)+1;
       saveBookmarks();
       displayBookmarks();
-      if (isEditMode) document.querySelectorAll('.delete-btn').forEach(function(b){ b.style.display='block'; });
+      if (isEditMode) document.querySelectorAll('.delete-btn').forEach(function(b){b.style.display='block';});
 
     } else if (!wasClick && dropTarget) {
-      // It was a drag — blank tab already closed in onDocMove
-      if (preOpenedWin) { preOpenedWin.close(); preOpenedWin = null; }
-      var ti = parseInt(dropTarget.dataset.index);
-      if (srcIndex !== null && srcIndex !== ti) {
-        var temp = bookmarks[srcIndex];
-        bookmarks[srcIndex] = bookmarks[ti];
-        bookmarks[ti] = temp;
+      var ti=parseInt(dropTarget.dataset.index);
+      if (srcIndex!==null && srcIndex!==ti) {
+        var temp=bookmarks[srcIndex];
+        bookmarks[srcIndex]=bookmarks[ti];
+        bookmarks[ti]=temp;
         saveBookmarks();
         displayBookmarks();
-        if (isEditMode) document.querySelectorAll('.delete-btn').forEach(function(b){ b.style.display='block'; });
+        if (isEditMode) document.querySelectorAll('.delete-btn').forEach(function(b){b.style.display='block';});
       }
-    } else {
-      // Drag that landed nowhere — close blank tab
-      if (preOpenedWin) { preOpenedWin.close(); preOpenedWin = null; }
     }
   }
 
   function onDocCancel(e) {
     removeDocListeners();
-    document.body.style.userSelect = '';
-    if (dragSrcEl)   { dragSrcEl.classList.remove('dragging'); dragSrcEl.style.cursor = 'pointer'; }
+    document.body.style.userSelect='';
+    if (dragSrcEl)   {dragSrcEl.classList.remove('dragging'); dragSrcEl.style.cursor='pointer';}
     if (dragTargetEl)  dragTargetEl.classList.remove('drag-over');
-    if (preOpenedWin) { preOpenedWin.close(); preOpenedWin = null; }
-    dragSrcIndex = null; dragSrcEl = null;
-    dragPointerStart = null; dragActivated = false; dragTargetEl = null;
+    dragSrcIndex=null; dragSrcEl=null;
+    dragPointerStart=null; dragActivated=false; dragTargetEl=null;
   }
 
   function removeDocListeners() {
@@ -332,89 +277,87 @@
     document.removeEventListener('pointercancel', onDocCancel);
   }
 
-  function bookmarkUnder(cx, cy, skip) {
-    var all = document.querySelectorAll('.bookmark');
-    for (var i = 0; i < all.length; i++) {
-      if (all[i] === skip) continue;
-      var r = all[i].getBoundingClientRect();
-      if (cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom) return all[i];
+  function bookmarkUnder(cx,cy,skip) {
+    var all=document.querySelectorAll('.bookmark');
+    for (var i=0;i<all.length;i++) {
+      if (all[i]===skip) continue;
+      var r=all[i].getBoundingClientRect();
+      if (cx>=r.left&&cx<=r.right&&cy>=r.top&&cy<=r.bottom) return all[i];
     }
     return null;
   }
 
-  /* ── storage & crud ── */
   function saveBookmarks() {
-    try { localStorage.setItem('myBookmarks', JSON.stringify(bookmarks)); }
-    catch(e) { alert('Storage error: ' + e.message); }
+    try { localStorage.setItem('myBookmarks',JSON.stringify(bookmarks)); }
+    catch(e){ alert('Storage error: '+e.message); }
   }
 
   function deleteBookmark(index) {
-    bookmarks.splice(index, 1);
-    saveBookmarks(); isEditMode = false; displayBookmarks();
+    bookmarks.splice(index,1); saveBookmarks(); isEditMode=false; displayBookmarks();
   }
 
   function toggleDeleteButtons() {
-    isEditMode = !isEditMode;
-    document.querySelectorAll('.delete-btn').forEach(function(btn) {
-      btn.style.display = isEditMode ? 'block' : 'none';
+    isEditMode=!isEditMode;
+    document.querySelectorAll('.delete-btn').forEach(function(btn){
+      btn.style.display=isEditMode?'block':'none';
     });
   }
 
   function exportBookmarks() {
-    var blob = new Blob([JSON.stringify(bookmarks, null, 2)], { type: 'text/plain' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'bookmarks.txt';
+    var blob=new Blob([JSON.stringify(bookmarks,null,2)],{type:'text/plain'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='bookmarks.txt';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   }
 
   function importBookmarks() {
-    var file = document.getElementById('importFile').files[0];
+    var file=document.getElementById('importFile').files[0];
     if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function(ev) {
+    var reader=new FileReader();
+    reader.onload=function(ev){
       try {
-        var imported = JSON.parse(ev.target.result);
+        var imported=JSON.parse(ev.target.result);
         if (Array.isArray(imported)) {
-          bookmarks = bookmarks.concat(imported.map(function(bm) {
+          bookmarks=bookmarks.concat(imported.map(function(bm){
             return {
-              name:       bm.name || '',
-              url:        bm.url  || '',
-              dateTime:   bm.dateTime || new Date().toISOString(),
-              lastOpened: (bm.lastOpened && !isNaN(new Date(bm.lastOpened).getTime()))
-                          ? new Date(bm.lastOpened).toISOString() : 'Never',
-              clickCount: bm.clickCount || 0
+              name:      bm.name||'',
+              url:       bm.url||'',
+              dateTime:  bm.dateTime||new Date().toISOString(),
+              lastOpened:(bm.lastOpened&&!isNaN(new Date(bm.lastOpened).getTime()))
+                         ?new Date(bm.lastOpened).toISOString():'Never',
+              clickCount:bm.clickCount||0
             };
           }));
           saveBookmarks(); displayBookmarks();
         } else alert('Invalid file format.');
-      } catch(err) { alert('Error reading file: ' + err.message); }
+      } catch(err){ alert('Error: '+err.message); }
     };
     reader.readAsText(file);
-    document.getElementById('importFile').value = '';
+    document.getElementById('importFile').value='';
   }
 
   function loadBookmarks() {
     try {
-      var stored = localStorage.getItem('myBookmarks');
+      var stored=localStorage.getItem('myBookmarks');
       if (!stored) return;
-      bookmarks = JSON.parse(stored).map(function(bm) {
+      bookmarks=JSON.parse(stored).map(function(bm){
         return {
-          name:       bm.name || '',
-          url:        bm.url  || '',
-          dateTime:   bm.dateTime || '',
-          lastOpened: (bm.lastOpened && bm.lastOpened !== 'Never' &&
-                       !isNaN(new Date(bm.lastOpened).getTime()))
-                      ? new Date(bm.lastOpened).toISOString() : 'Never',
-          clickCount: bm.clickCount || 0
+          name:      bm.name||'',
+          url:       bm.url||'',
+          dateTime:  bm.dateTime||'',
+          lastOpened:(bm.lastOpened&&bm.lastOpened!=='Never'&&
+                      !isNaN(new Date(bm.lastOpened).getTime()))
+                     ?new Date(bm.lastOpened).toISOString():'Never',
+          clickCount:bm.clickCount||0
         };
       });
-    } catch(e) { bookmarks = []; }
+    } catch(e){ bookmarks=[]; }
     displayBookmarks();
   }
 
-  document.getElementById('shortName').addEventListener('keypress', function(e) { if(e.key==='Enter') addnsave(); });
-  document.getElementById('webURL').addEventListener('keypress',    function(e) { if(e.key==='Enter') addnsave(); });
+  document.getElementById('shortName').addEventListener('keypress',function(e){if(e.key==='Enter')addnsave();});
+  document.getElementById('webURL').addEventListener('keypress',function(e){if(e.key==='Enter')addnsave();});
 
   loadBookmarks();
 </script>
