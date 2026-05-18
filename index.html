@@ -89,7 +89,7 @@
 <button id="buttons" onclick="searchGoogle()">Search</button>
 <br><hr><hr><br>
 
-<p id="dragHint">☰ Long-press &amp; drag to reorder &middot; Tap/click to open</p>
+<p id="dragHint" id="dragHint">☰ <span id="hintText">Tap to open links</span></p>
 <div id="bookdiv">
   <div class="bookmark-column" id="bookmarkList1"></div>
   <div class="bookmark-column" id="bookmarkList2"></div>
@@ -168,6 +168,7 @@
       var div=document.createElement('div');
       div.className='bookmark';
       div.dataset.index=index;
+      div.style.cursor = isEditMode ? 'grab' : 'pointer';
       var count=bm.clickCount||0;
       div.innerHTML=
         '<strong title="'+escHtml(bm.name)+'">'+escHtml(bm.name)+'</strong>'+
@@ -191,21 +192,34 @@
     if (e.target.classList.contains('delete-btn')) return;
     if (e.pointerType==='mouse' && e.button!==0) return;
 
-    dragSrcIndex     = parseInt(this.dataset.index);
+    var idx = parseInt(this.dataset.index);
+
+    // ── Normal mode: just open link, no drag at all ──
+    if (!isEditMode) {
+      var url = bookmarks[idx].url;
+      var a = document.createElement('a');
+      a.href=url; a.target='_blank'; a.rel='noopener noreferrer';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      bookmarks[idx].lastOpened = new Date().toISOString();
+      bookmarks[idx].clickCount = (bookmarks[idx].clickCount||0)+1;
+      saveBookmarks();
+      displayBookmarks();
+      return;
+    }
+
+    // ── Edit mode: drag & drop reorder ──
+    dragSrcIndex     = idx;
     dragSrcEl        = this;
     dragPointerStart = {x:e.clientX, y:e.clientY};
     dragActivated    = false;
     dragTargetEl     = null;
 
-    // Long-press activates drag (good for touch users trying to scroll normally)
-    var self = this;
     longPressTimer = setTimeout(function() {
       if (!dragActivated) {
         dragActivated = true;
         dragSrcEl.classList.add('dragging');
         dragSrcEl.style.cursor = 'grabbing';
         document.body.style.userSelect = 'none';
-        // Vibrate on mobile to signal drag started
         if (navigator.vibrate) navigator.vibrate(40);
       }
     }, LONG_PRESS_MS);
@@ -265,32 +279,8 @@
     dragSrcIndex=null; dragSrcEl=null;
     dragPointerStart=null; dragActivated=false; dragTargetEl=null;
 
-    if (wasClick && srcIndex!==null) {
-      // ── THE REAL FIX ──
-      // pointerup is still inside the same user-gesture call stack on all browsers.
-      // window.open(REAL_URL) here works perfectly — no blank tab needed.
-      // The blank-tab trick caused the blank page because location.href assignment
-      // is async and the browser security sandbox blocks cross-origin navigation
-      // on a pre-opened tab in some configurations.
-      var url=bookmarks[srcIndex].url;
-      // Use <a> click instead of window.open — this works for:
-      // • https:// links (all browsers, all hosts)
-      // • file:/// local HTML files (when page itself is a local file)
-      var a=document.createElement('a');
-      a.href=url;
-      a.target='_blank';
-      a.rel='noopener noreferrer';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-
-      bookmarks[srcIndex].lastOpened=new Date().toISOString();
-      bookmarks[srcIndex].clickCount=(bookmarks[srcIndex].clickCount||0)+1;
-      saveBookmarks();
-      displayBookmarks();
-      if (isEditMode) document.querySelectorAll('.delete-btn').forEach(function(b){b.style.display='block';});
-
-    } else if (!wasClick && dropTarget) {
+    // Edit mode: tap without drag = do nothing (link opens only in normal mode via onPointerDown)
+    if (!wasClick && dropTarget) {
       var ti=parseInt(dropTarget.dataset.index);
       if (srcIndex!==null && srcIndex!==ti) {
         var temp=bookmarks[srcIndex];
@@ -339,10 +329,20 @@
   }
 
   function toggleDeleteButtons() {
-    isEditMode=!isEditMode;
+    isEditMode = !isEditMode;
+    // Show/hide delete buttons
     document.querySelectorAll('.delete-btn').forEach(function(btn){
-      btn.style.display=isEditMode?'block':'none';
+      btn.style.display = isEditMode ? 'block' : 'none';
     });
+    // Cursor: grab in edit mode, pointer in normal mode
+    document.querySelectorAll('.bookmark').forEach(function(bm){
+      bm.style.cursor = isEditMode ? 'grab' : 'pointer';
+    });
+    // Update hint text
+    var hint = document.getElementById('hintText');
+    if (hint) hint.textContent = isEditMode
+      ? 'Edit ON: drag to reorder · tap Delete to remove'
+      : 'Tap to open links';
   }
 
   function exportBookmarks() {
