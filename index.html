@@ -89,7 +89,7 @@
 <button id="buttons" onclick="searchGoogle()">Search</button>
 <br><hr><hr><br>
 
-<p id="dragHint" id="dragHint">☰ <span id="hintText">Tap to open links</span></p>
+<p id="dragHint">☰ <span id="hintText">Tap to open links</span></p>
 <div id="bookdiv">
   <div class="bookmark-column" id="bookmarkList1"></div>
   <div class="bookmark-column" id="bookmarkList2"></div>
@@ -113,17 +113,21 @@
   var bookmarks  = [];
   var isEditMode = false;
 
-  // Drag state
-  var DRAG_THRESHOLD   = 12;  // higher = less accidental drag
-  var DRAG_ANGLE_MAX   = 45;  // degrees — mostly horizontal = drag, mostly vertical = scroll
-  var LONG_PRESS_MS    = 400; // long press also activates drag (for touch)
+  // Pointer / drag state
+  var TAP_MOVE_MAX   = 10;   // px — more than this = not a tap
+  var DRAG_THRESHOLD = 12;   // px — movement needed to start drag (edit mode)
+  var DRAG_ANGLE_MAX = 45;   // degrees — mostly-horizontal = drag
+  var LONG_PRESS_MS  = 400;
+
   var longPressTimer   = null;
   var dragSrcIndex     = null;
   var dragSrcEl        = null;
   var dragPointerStart = null;
   var dragActivated    = false;
   var dragTargetEl     = null;
+  var tapCancelled     = false;  // ← NEW: set true if pointer moved too much
 
+  // ── helpers ──────────────────────────────────────────────────────────────
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
                     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -141,12 +145,24 @@
     return diff+' days ago';
   }
 
+  function openBookmark(idx) {
+    var url = bookmarks[idx].url;
+    var a = document.createElement('a');
+    a.href=url; a.target='_blank'; a.rel='noopener noreferrer';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    bookmarks[idx].lastOpened = new Date().toISOString();
+    bookmarks[idx].clickCount = (bookmarks[idx].clickCount||0) + 1;
+    saveBookmarks();
+    displayBookmarks();
+  }
+
   function searchGoogle() {
     var q=document.getElementById('searchBox').value.trim();
     if (q) window.open('https://www.google.com/search?q='+encodeURIComponent(q),'_blank');
     else   alert('Please enter a search term.');
   }
 
+  // ── bookmark CRUD ─────────────────────────────────────────────────────────
   function addBookmark() {
     var name=document.getElementById('shortName').value.trim();
     var url =document.getElementById('webURL').value.trim();
@@ -176,131 +192,130 @@
         ' <span class="click-count">('+count+' times)</span></small>'+
         '<button class="delete-btn" data-index="'+index+'">Delete</button>';
       if (isEditMode) div.querySelector('.delete-btn').style.display='block';
+
       var btn=div.querySelector('.delete-btn');
-      btn.addEventListener('pointerdown',function(e){e.stopPropagation();e.preventDefault();});
+      btn.addEventListener('pointerdown',function(e){ e.stopPropagation(); });
       btn.addEventListener('click',function(e){
         e.stopPropagation();
         deleteBookmark(parseInt(this.dataset.index));
       });
+
       div.addEventListener('pointerdown', onPointerDown);
       (index%2===0?list1:list2).appendChild(div);
     });
   }
 
-  // ── POINTER DOWN ──
+  // ── POINTER DOWN ──────────────────────────────────────────────────────────
   function onPointerDown(e) {
     if (e.target.classList.contains('delete-btn')) return;
     if (e.pointerType==='mouse' && e.button!==0) return;
 
-    var idx = parseInt(this.dataset.index);
-
-    // ── Normal mode: just open link, no drag at all ──
-    if (!isEditMode) {
-      var url = bookmarks[idx].url;
-      var a = document.createElement('a');
-      a.href=url; a.target='_blank'; a.rel='noopener noreferrer';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      bookmarks[idx].lastOpened = new Date().toISOString();
-      bookmarks[idx].clickCount = (bookmarks[idx].clickCount||0)+1;
-      saveBookmarks();
-      displayBookmarks();
-      return;
-    }
-
-    // ── Edit mode: drag & drop reorder ──
-    dragSrcIndex     = idx;
+    dragSrcIndex     = parseInt(this.dataset.index);
     dragSrcEl        = this;
-    dragPointerStart = {x:e.clientX, y:e.clientY};
+    dragPointerStart = { x:e.clientX, y:e.clientY };
     dragActivated    = false;
     dragTargetEl     = null;
+    tapCancelled     = false;   // ← reset tap guard
 
-    longPressTimer = setTimeout(function() {
-      if (!dragActivated) {
-        dragActivated = true;
-        dragSrcEl.classList.add('dragging');
-        dragSrcEl.style.cursor = 'grabbing';
-        document.body.style.userSelect = 'none';
-        if (navigator.vibrate) navigator.vibrate(40);
-      }
-    }, LONG_PRESS_MS);
+    if (isEditMode) {
+      // Long-press to start drag
+      longPressTimer = setTimeout(function() {
+        if (!dragActivated) {
+          dragActivated = true;
+          dragSrcEl.classList.add('dragging');
+          dragSrcEl.style.cursor = 'grabbing';
+          document.body.style.userSelect = 'none';
+          if (navigator.vibrate) navigator.vibrate(40);
+        }
+      }, LONG_PRESS_MS);
+    }
 
     document.addEventListener('pointermove',   onDocMove);
     document.addEventListener('pointerup',     onDocUp);
     document.addEventListener('pointercancel', onDocCancel);
   }
 
-  // ── POINTER MOVE ──
+  // ── POINTER MOVE ──────────────────────────────────────────────────────────
   function onDocMove(e) {
-    if (dragSrcIndex===null) return;
-    var dx = e.clientX - dragPointerStart.x;
-    var dy = e.clientY - dragPointerStart.y;
+    if (dragSrcIndex === null) return;
+    var dx   = e.clientX - dragPointerStart.x;
+    var dy   = e.clientY - dragPointerStart.y;
     var dist = Math.hypot(dx, dy);
 
-    if (!dragActivated && dist > DRAG_THRESHOLD) {
-      // Check angle: if mostly vertical → it's a scroll, cancel drag tracking
-      var angle = Math.abs(Math.atan2(Math.abs(dy), Math.abs(dx)) * 180 / Math.PI);
-      if (angle > DRAG_ANGLE_MAX) {
-        // User is scrolling vertically — abort drag entirely
-        clearTimeout(longPressTimer); longPressTimer = null;
-        removeDocListeners();
-        dragSrcIndex = null; dragSrcEl = null;
-        dragPointerStart = null; dragActivated = false; dragTargetEl = null;
-        return;
-      }
-      // Mostly horizontal — it's a drag
-      clearTimeout(longPressTimer); longPressTimer = null;
-      dragActivated = true;
-      dragSrcEl.classList.add('dragging');
-      dragSrcEl.style.cursor = 'grabbing';
-      document.body.style.userSelect = 'none';
-    }
+    // Cancel tap if finger/mouse moved too much (normal OR edit mode)
+    if (dist > TAP_MOVE_MAX) tapCancelled = true;
 
-    if (dragActivated) {
-      var under=bookmarkUnder(e.clientX,e.clientY,dragSrcEl);
-      if (dragTargetEl && dragTargetEl!==under) dragTargetEl.classList.remove('drag-over');
-      dragTargetEl=under;
-      if (dragTargetEl) dragTargetEl.classList.add('drag-over');
+    if (isEditMode) {
+      if (!dragActivated && dist > DRAG_THRESHOLD) {
+        var angle = Math.abs(Math.atan2(Math.abs(dy), Math.abs(dx)) * 180 / Math.PI);
+        if (angle > DRAG_ANGLE_MAX) {
+          // Vertical scroll — abort drag tracking entirely
+          clearTimeout(longPressTimer); longPressTimer = null;
+          removeDocListeners();
+          resetDragState();
+          return;
+        }
+        clearTimeout(longPressTimer); longPressTimer = null;
+        dragActivated = true;
+        dragSrcEl.classList.add('dragging');
+        dragSrcEl.style.cursor = 'grabbing';
+        document.body.style.userSelect = 'none';
+      }
+
+      if (dragActivated) {
+        var under = bookmarkUnder(e.clientX, e.clientY, dragSrcEl);
+        if (dragTargetEl && dragTargetEl !== under) dragTargetEl.classList.remove('drag-over');
+        dragTargetEl = under;
+        if (dragTargetEl) dragTargetEl.classList.add('drag-over');
+      }
     }
   }
 
-  // ── POINTER UP ──
+  // ── POINTER UP ────────────────────────────────────────────────────────────
   function onDocUp(e) {
     clearTimeout(longPressTimer); longPressTimer = null;
     removeDocListeners();
-    document.body.style.userSelect='';
+    document.body.style.userSelect = '';
 
-    var srcIndex  =dragSrcIndex;
-    var wasClick  =!dragActivated;
-    var dropTarget=dragTargetEl;
+    var srcIndex   = dragSrcIndex;
+    var wasDrag    = dragActivated;
+    var dropTarget = dragTargetEl;
+    var wasTap     = !tapCancelled;  // ← clean tap only if pointer barely moved
 
-    if (dragSrcEl)   {dragSrcEl.classList.remove('dragging'); dragSrcEl.style.cursor='pointer';}
+    if (dragSrcEl)   { dragSrcEl.classList.remove('dragging'); dragSrcEl.style.cursor = isEditMode ? 'grab' : 'pointer'; }
     if (dragTargetEl)  dragTargetEl.classList.remove('drag-over');
 
-    dragSrcIndex=null; dragSrcEl=null;
-    dragPointerStart=null; dragActivated=false; dragTargetEl=null;
+    resetDragState();
 
-    // Edit mode: tap without drag = do nothing (link opens only in normal mode via onPointerDown)
-    if (!wasClick && dropTarget) {
-      var ti=parseInt(dropTarget.dataset.index);
-      if (srcIndex!==null && srcIndex!==ti) {
-        var temp=bookmarks[srcIndex];
-        bookmarks[srcIndex]=bookmarks[ti];
-        bookmarks[ti]=temp;
+    if (!isEditMode) {
+      // Normal mode: open link only on a clean tap
+      if (wasTap) openBookmark(srcIndex);
+      return;
+    }
+
+    // Edit mode: reorder on drop
+    if (wasDrag && dropTarget) {
+      var ti = parseInt(dropTarget.dataset.index);
+      if (srcIndex !== null && srcIndex !== ti) {
+        var temp = bookmarks[srcIndex];
+        bookmarks[srcIndex] = bookmarks[ti];
+        bookmarks[ti] = temp;
         saveBookmarks();
         displayBookmarks();
-        if (isEditMode) document.querySelectorAll('.delete-btn').forEach(function(b){b.style.display='block';});
+        // Re-show delete buttons after re-render
+        document.querySelectorAll('.delete-btn').forEach(function(b){ b.style.display='block'; });
       }
     }
   }
 
-  function onDocCancel(e) {
+  // ── CANCEL / CLEANUP ──────────────────────────────────────────────────────
+  function onDocCancel() {
     clearTimeout(longPressTimer); longPressTimer = null;
     removeDocListeners();
-    document.body.style.userSelect='';
-    if (dragSrcEl)   {dragSrcEl.classList.remove('dragging'); dragSrcEl.style.cursor='pointer';}
+    document.body.style.userSelect = '';
+    if (dragSrcEl)   { dragSrcEl.classList.remove('dragging'); dragSrcEl.style.cursor = isEditMode ? 'grab' : 'pointer'; }
     if (dragTargetEl)  dragTargetEl.classList.remove('drag-over');
-    dragSrcIndex=null; dragSrcEl=null;
-    dragPointerStart=null; dragActivated=false; dragTargetEl=null;
+    resetDragState();
   }
 
   function removeDocListeners() {
@@ -309,18 +324,28 @@
     document.removeEventListener('pointercancel', onDocCancel);
   }
 
-  function bookmarkUnder(cx,cy,skip) {
-    var all=document.querySelectorAll('.bookmark');
-    for (var i=0;i<all.length;i++) {
+  function resetDragState() {
+    dragSrcIndex     = null;
+    dragSrcEl        = null;
+    dragPointerStart = null;
+    dragActivated    = false;
+    dragTargetEl     = null;
+    tapCancelled     = false;
+  }
+
+  function bookmarkUnder(cx, cy, skip) {
+    var all = document.querySelectorAll('.bookmark');
+    for (var i=0; i<all.length; i++) {
       if (all[i]===skip) continue;
-      var r=all[i].getBoundingClientRect();
-      if (cx>=r.left&&cx<=r.right&&cy>=r.top&&cy<=r.bottom) return all[i];
+      var r = all[i].getBoundingClientRect();
+      if (cx>=r.left && cx<=r.right && cy>=r.top && cy<=r.bottom) return all[i];
     }
     return null;
   }
 
+  // ── STORAGE ───────────────────────────────────────────────────────────────
   function saveBookmarks() {
-    try { localStorage.setItem('myBookmarks',JSON.stringify(bookmarks)); }
+    try { localStorage.setItem('myBookmarks', JSON.stringify(bookmarks)); }
     catch(e){ alert('Storage error: '+e.message); }
   }
 
@@ -330,15 +355,12 @@
 
   function toggleDeleteButtons() {
     isEditMode = !isEditMode;
-    // Show/hide delete buttons
     document.querySelectorAll('.delete-btn').forEach(function(btn){
       btn.style.display = isEditMode ? 'block' : 'none';
     });
-    // Cursor: grab in edit mode, pointer in normal mode
     document.querySelectorAll('.bookmark').forEach(function(bm){
       bm.style.cursor = isEditMode ? 'grab' : 'pointer';
     });
-    // Update hint text
     var hint = document.getElementById('hintText');
     if (hint) hint.textContent = isEditMode
       ? 'Edit ON: drag to reorder · tap Delete to remove'
@@ -348,8 +370,7 @@
   function exportBookmarks() {
     var blob=new Blob([JSON.stringify(bookmarks,null,2)],{type:'text/plain'});
     var a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download='bookmarks.txt';
+    a.href=URL.createObjectURL(blob); a.download='bookmarks.txt';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   }
 
