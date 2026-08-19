@@ -57,8 +57,8 @@
       background:#17c3b2; color:#fff; border:none; cursor:pointer; box-shadow:0 3px 6px rgba(0,0,0,0.2);
     }
 
-    #bookdiv { display:flex; min-height:120px; border:1px solid #ddd; border-radius:2px; background:rgba(255,255,255,0.8); }
-    .bookmark-column { flex:1; padding:4px 0; }
+    /* Single column bookmark list */
+    #bookdiv { display:flex; flex-direction:column; min-height:120px; border:1px solid #ddd; border-radius:2px; background:rgba(255,255,255,0.8); }
     #emptyMsg { text-align:center; color:#aaa; padding:24px; width:100%; }
 
     .bookmark {
@@ -69,15 +69,45 @@
       transition:transform 0.15s, opacity 0.15s;
       position:relative; cursor:pointer;
       user-select:none; -webkit-user-select:none;
+      text-decoration:none;
     }
-    .bookmark:hover { transform:scale(1.015); }
+    .bookmark:hover { transform:scale(1.001); }
+
+    /* Dimmed state for non-matching bookmarks while searching */
+    .bookmark.dim {
+      opacity:0.32;
+      filter:grayscale(55%);
+      border-left-color:#ccc;
+    }
+    .bookmark.dim:hover { opacity:0.55; }
 
     .bookmark strong {
-      font-size:14px; display:block; padding:10px 72px 2px 10px;
+      font-size:14px; display:block; padding:10px 76px 2px 10px;
       color:#111; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     }
     .bookmark small { display:block; padding:0 10px 8px 10px; color:#888; font-size:11px; }
     .click-count { color:#17c3b2; font-size:11px; font-weight:600; }
+    .tab-tag {
+      display:inline-block; margin-right:6px; padding:1px 7px;
+      background:#eef7f6; color:#17c3b2; border-radius:20px;
+      font-size:10px; font-weight:600; vertical-align:middle;
+    }
+
+    /* Inline Edit Controls */
+    .edit-fields { padding:8px 76px 8px 10px; display:flex; flex-direction:column; gap:6px; }
+    .edit-fields input {
+      width:100%; padding:6px 10px; font-size:13px; border:1px solid #ccc;
+      border-radius:6px; background:#fff; box-shadow:none; margin-bottom:0;
+    }
+
+    .bookmark .star-btn {
+      position:absolute; top:8px; right:10px;
+      background:none; border:none; padding:2px; cursor:pointer; z-index:11;
+      font-size:19px; line-height:1; color:#ccc; opacity:0.55;
+      transition:color 0.15s, opacity 0.15s, transform 0.15s;
+    }
+    .bookmark .star-btn:hover { transform:scale(1.15); opacity:0.85; }
+    .bookmark .star-btn.active { color:#111; opacity:1; }
 
     .bookmark .delete-btn {
       position:absolute; top:50%; transform:translateY(-50%); right:8px;
@@ -87,15 +117,13 @@
     .bookmark .delete-btn:hover { background:#d1131a; }
 
     @media (max-width:500px) {
-      #bookdiv { flex-direction:column; }
-      .bookmark-column { width:100%; }
       .button-group button { padding:10px 14px; font-size:14px; }
       #searchBox { width:60%; }
     }
     #searchBox { padding:10px 20px; width:280px; border-radius:50px; border:1px solid #ccc; font-size:18px; }
     #buttons {
       padding:10px 20px; font-size:18px; background:#FF3D00; color:white;
-      border:none; border-radius:50px; margin-left:12px; width:100px; cursor:pointer;
+      border:none; border-radius:50px; margin-left:10px; width:110px; cursor:pointer;
     }
     #buttons:hover { background:#45a049; }
     #dragHint { text-align:center; font-size:12px; color:#aaa; margin-bottom:4px; }
@@ -133,19 +161,18 @@
 <body>
 
 <h2>Bookmark Diary</h2>
-<input type="text" id="searchBox" placeholder="google search...."
+<input type="text" id="searchBox" placeholder="search bookmarks or google...."
   onkeydown="if(event.key==='Enter') searchGoogle()">
 <button id="buttons" onclick="searchGoogle()">Search</button>
 <br><hr><hr><br>
 
 <div id="tabBar"></div>
 
-<p id="dragHint">Sorted by most-used · <span id="hintText">Tap to open links</span></p>
+<p id="dragHint"><span id="hintText">Tap to open links</span></p>
 <div id="bookdiv">
   <div class="bookmark-column" id="bookmarkList1"></div>
-  <div class="bookmark-column" id="bookmarkList2"></div>
 </div>
-<!-- Floating + button opens the modal with all bookmark tools -->
+
 <button id="fabBtn" onclick="openModal()" title="Add / manage bookmarks">+</button>
 
 <div id="modalOverlay" onclick="if(event.target===this) closeModal()">
@@ -157,12 +184,12 @@
 
     <div class="input-group">
       <input type="text" id="webURL"    placeholder="Web URL (https://...)">
-      <input type="text" id="shortName" placeholder="Short Name">
+      <input type="text" id="shortName" placeholder="Short Name (Optional)">
       <select id="categorySelect"></select>
     </div>
     <div class="button-group">
       <button onclick="addnsave()">Add</button>
-      <button onclick="toggleDeleteButtons()">Edit</button>
+      <button onclick="toggleDeleteButtons()">Edit Mode</button>
       <button onclick="document.getElementById('importFile').click()">Import</button>
       <button onclick="exportBookmarks()">Export</button>
       <button onclick="window.print()">Print</button>
@@ -176,6 +203,7 @@
   var tabs       = [];
   var activeTab  = 'home';
   var isEditMode = false;
+  var searchQuery = '';
   var STORAGE_KEY = 'bookmarkDiaryData';
 
   function defaultTabs() {
@@ -186,7 +214,6 @@
     ];
   }
 
-  // ── helpers ──────────────────────────────────────────────────────────────
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
                     .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -212,12 +239,42 @@
     return diff+' days ago';
   }
 
-  function openBookmark(id) {
+  // Extract a fallback title from web or local file URLs
+  function extractTitleFromUrl(url) {
+    try {
+      if (/^file:\/\/\//i.test(url)) {
+        var parts = url.split('/');
+        var fileName = parts[parts.length - 1] || 'Local Page';
+        return fileName.replace(/\.[^/.]+$/, ""); // strip extension
+      }
+      var clean = url.replace(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//, '');
+      var host = clean.split('/')[0].split('?')[0];
+      host = host.replace(/^www\./i, '');
+      var name = host.split('.')[0];
+      return name ? name.charAt(0).toUpperCase() + name.slice(1) : 'Untitled';
+    } catch(e) {
+      return 'Untitled';
+    }
+  }
+
+  function getTabName(catId) {
+    var t = tabs.find(function(x){ return x.id===catId; });
+    return t ? t.name : '';
+  }
+
+  // Does a bookmark match the current search query? Checks title, URL, and tab/category name.
+  function matchesSearch(bm, q) {
+    if (!q) return true;
+    if (bm.name && bm.name.toLowerCase().indexOf(q) !== -1) return true;
+    if (bm.url && bm.url.toLowerCase().indexOf(q) !== -1) return true;
+    var tabName = getTabName(bm.category);
+    if (tabName && tabName.toLowerCase().indexOf(q) !== -1) return true;
+    return false;
+  }
+
+  function recordOpen(id) {
     var bm = bookmarks.find(function(b){ return b.id===id; });
     if (!bm) return;
-    var a = document.createElement('a');
-    a.href=bm.url; a.target='_blank'; a.rel='noopener noreferrer';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
     bm.lastOpened = new Date().toISOString();
     bm.clickCount = (bm.clickCount||0) + 1;
     saveData();
@@ -237,7 +294,7 @@
     else   alert('Please enter a search term.');
   }
 
-  // ── tabs ─────────────────────────────────────────────────────────────────
+  // ── Tabs ──
   function renderTabs() {
     var bar = document.getElementById('tabBar');
     bar.innerHTML = '';
@@ -261,7 +318,6 @@
     addBtn.onclick = addTab;
     bar.appendChild(addBtn);
 
-    // keep category select in sync
     var sel = document.getElementById('categorySelect');
     var prevVal = sel.value || activeTab;
     sel.innerHTML = tabs.map(function(t){ return '<option value="'+t.id+'">'+escHtml(t.name)+'</option>'; }).join('');
@@ -293,6 +349,7 @@
     t.name = name.trim();
     saveData();
     renderTabs();
+    displayBookmarks();
   }
 
   function deleteTab(id) {
@@ -313,66 +370,134 @@
     displayBookmarks();
   }
 
-  // ── bookmark CRUD ────────────────────────────────────────────────────────
+  // ── Bookmark CRUD ──
   function addBookmark() {
-    var name=document.getElementById('shortName').value.trim();
-    var url =document.getElementById('webURL').value.trim();
-    var cat = document.getElementById('categorySelect').value || activeTab;
-    if (!name||!url){ alert('Please fill both fields.'); return false; }
-    if (!/^https?:\/\//i.test(url)) url='https://'+url;
-    bookmarks.push({
+    var name = document.getElementById('shortName').value.trim();
+    var url  = document.getElementById('webURL').value.trim();
+    var cat  = document.getElementById('categorySelect').value || activeTab;
+    if (!url){ alert('Please fill in the URL.'); return false; }
+    
+    if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(url)) url = 'https://' + url;
+    if (!name) name = extractTitleFromUrl(url);
+
+    var newBm = {
       id: 'bm-'+Date.now()+'-'+Math.floor(Math.random()*1000),
-      name:name, url:url, category:cat,
-      dateTime:new Date().toISOString(), lastOpened:'Never', clickCount:0
-    });
-    document.getElementById('shortName').value='';
-    document.getElementById('webURL').value='';
+      name: name, url: url, category: cat,
+      dateTime: new Date().toISOString(), lastOpened: 'Never', clickCount: 0,
+      favorite: false
+    };
+    bookmarks.push(newBm);
+
+    document.getElementById('shortName').value = '';
+    document.getElementById('webURL').value = '';
     displayBookmarks();
     return true;
   }
+
   function addnsave(){ if(addBookmark()){ saveData(); closeModal(); } }
 
   function displayBookmarks() {
-    var list1=document.getElementById('bookmarkList1');
-    var list2=document.getElementById('bookmarkList2');
-    list1.innerHTML=''; list2.innerHTML='';
+    var list1 = document.getElementById('bookmarkList1');
+    list1.innerHTML = '';
 
-    var shown = bookmarks
-      .filter(function(b){ return b.category === activeTab; })
-      .slice()
-      .sort(function(a,b){ return (b.clickCount||0) - (a.clickCount||0); });
+    var q = searchQuery;
+    var shown, searching = !!q;
+
+    if (searching) {
+      // Search mode: consider bookmarks across ALL tabs (title, URL, and tab name all count
+      // as match fields, so results can come from tabs other than the active one).
+      shown = bookmarks.slice();
+      shown.sort(function(a, b){
+        var am = matchesSearch(a, q) ? 0 : 1;
+        var bm = matchesSearch(b, q) ? 0 : 1;
+        return am - bm; // stable sort: matches float to top, relative order otherwise preserved
+      });
+    } else {
+      // Normal mode: exact array order within the active tab only, no sorting
+      shown = bookmarks.filter(function(b){ return b.category === activeTab; });
+    }
 
     if (shown.length === 0) {
       var p = document.createElement('p');
       p.id = 'emptyMsg';
-      p.textContent = 'No bookmarks in this tab yet.';
+      p.textContent = searching ? 'No bookmarks match "'+searchQuery+'".' : 'No bookmarks in this tab yet.';
       list1.appendChild(p);
       return;
     }
 
-    shown.forEach(function(bm,i){
-      var div=document.createElement('div');
-      div.className='bookmark';
-      div.dataset.id=bm.id;
-      var count=bm.clickCount||0;
-      div.innerHTML=
-        '<strong title="'+escHtml(bm.name)+'">'+escHtml(bm.name)+'</strong>'+
-        '<small>'+getDaysAgo(bm.lastOpened)+
-        ' <span class="click-count">('+count+' opens)</span></small>'+
-        '<button class="delete-btn" data-id="'+bm.id+'">Delete</button>';
-      if (isEditMode) div.querySelector('.delete-btn').style.display='block';
+    shown.forEach(function(bm){
+      var div = document.createElement('a');
+      div.className = 'bookmark';
+      if (searching && !matchesSearch(bm, q)) div.className += ' dim';
+      div.dataset.id = bm.id;
+      div.href = bm.url;
+      div.target = '_blank';
+      div.rel = 'noopener noreferrer';
+      var count = bm.clickCount||0;
+      var isFav = !!bm.favorite;
+      var tabTag = searching ? '<span class="tab-tag">'+escHtml(getTabName(bm.category))+'</span>' : '';
 
-      var btn=div.querySelector('.delete-btn');
-      btn.addEventListener('click',function(e){
+      if (isEditMode) {
+        div.innerHTML =
+          '<div class="edit-fields">' +
+            '<input type="text" class="edit-name" value="' + escHtml(bm.name) + '" placeholder="Title">' +
+            '<input type="text" class="edit-url" value="' + escHtml(bm.url) + '" placeholder="URL">' +
+          '</div>' +
+          '<button class="delete-btn" style="display:block;" data-id="'+bm.id+'">Delete</button>';
+
+        var inputName = div.querySelector('.edit-name');
+        var inputUrl  = div.querySelector('.edit-url');
+
+        var updateBm = function() {
+          var newUrl = inputUrl.value.trim();
+          var newName = inputName.value.trim();
+          if (newUrl) {
+            if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(newUrl)) newUrl = 'https://' + newUrl;
+            bm.url = newUrl;
+            div.href = newUrl;
+          }
+          bm.name = newName || extractTitleFromUrl(bm.url);
+          inputName.value = bm.name;
+          saveData();
+        };
+
+        inputName.addEventListener('change', updateBm);
+        inputUrl.addEventListener('change', updateBm);
+        inputName.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); });
+        inputUrl.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); });
+
+      } else {
+        div.innerHTML =
+          '<strong title="'+escHtml(bm.name)+'">'+escHtml(bm.name)+'</strong>'+
+          '<small>'+tabTag+getDaysAgo(bm.lastOpened)+
+          ' <span class="click-count">('+count+' opens)</span></small>'+
+          '<button class="star-btn'+(isFav?' active':'')+'" data-id="'+bm.id+'" title="'+(isFav?'Marked important':'Mark as important')+'">'+(isFav?'★':'☆')+'</button>'+
+          '<button class="delete-btn" data-id="'+bm.id+'">Delete</button>';
+
+        var starBtn = div.querySelector('.star-btn');
+        starBtn.addEventListener('click', function(e){
+          e.preventDefault();
+          e.stopPropagation();
+          toggleFavorite(this.dataset.id);
+        });
+      }
+
+      var btn = div.querySelector('.delete-btn');
+      btn.addEventListener('click', function(e){
+        e.preventDefault();
         e.stopPropagation();
         deleteBookmark(this.dataset.id);
       });
+
       div.addEventListener('click', function(e){
-        if (e.target.classList.contains('delete-btn')) return;
-        if (!isEditMode) openBookmark(bm.id);
+        if (e.target.classList.contains('delete-btn') || e.target.classList.contains('star-btn') || isEditMode) {
+          e.preventDefault();
+          return;
+        }
+        recordOpen(bm.id);
       });
 
-      (i%2===0?list1:list2).appendChild(div);
+      list1.appendChild(div);
     });
   }
 
@@ -382,19 +507,26 @@
     displayBookmarks();
   }
 
+  function toggleFavorite(id) {
+    var bm = bookmarks.find(function(b){ return b.id===id; });
+    if (!bm) return;
+    bm.favorite = !bm.favorite;
+    saveData();
+    displayBookmarks();
+  }
+
   function toggleDeleteButtons() {
     isEditMode = !isEditMode;
     document.body.classList.toggle('editMode', isEditMode);
-    document.querySelectorAll('.delete-btn').forEach(function(btn){
-      btn.style.display = isEditMode ? 'block' : 'none';
-    });
+    displayBookmarks();
     var hint = document.getElementById('hintText');
     if (hint) hint.textContent = isEditMode
-      ? 'Edit ON: tap ✎/✕ on tabs, Delete on bookmarks'
+      ? 'Edit Mode ON: Edit titles/URLs directly below or tap Delete'
       : 'Tap to open links';
+    closeModal();
   }
 
-  // ── storage ──────────────────────────────────────────────────────────────
+  // ── Storage ──
   async function saveData() {
     var payload = { tabs: tabs, bookmarks: bookmarks, activeTab: activeTab };
     try {
@@ -422,14 +554,17 @@
         var data = JSON.parse(raw);
         tabs = Array.isArray(data.tabs) && data.tabs.length ? data.tabs : defaultTabs();
         bookmarks = Array.isArray(data.bookmarks) ? data.bookmarks.map(function(bm,idx){
+          var url = bm.url || '';
           return {
             id: bm.id || ('bm-'+idx+'-'+Date.now()),
-            name: bm.name||'', url: bm.url||'',
+            name: bm.name || extractTitleFromUrl(url),
+            url: url,
             category: bm.category || (tabs[0] && tabs[0].id) || 'home',
             dateTime: bm.dateTime||'',
-            lastOpened:(bm.lastOpened&&bm.lastOpened!=='Never'&&!isNaN(new Date(bm.lastOpened).getTime()))
+            lastOpened: (bm.lastOpened&&bm.lastOpened!=='Never'&&!isNaN(new Date(bm.lastOpened).getTime()))
                        ? new Date(bm.lastOpened).toISOString() : 'Never',
-            clickCount: bm.clickCount||0
+            clickCount: bm.clickCount||0,
+            favorite: !!bm.favorite
           };
         }) : [];
         activeTab = (data.activeTab && tabs.some(function(t){return t.id===data.activeTab;}))
@@ -468,17 +603,23 @@
             if (t && t.id && !tabs.some(function(x){return x.id===t.id;})) tabs.push({id:t.id,name:t.name||t.id});
           });
         }
-        bookmarks = bookmarks.concat(importedBms.map(function(bm){
+
+        var newBookmarks = importedBms.map(function(bm){
+          var url = bm.url || '';
           return {
             id: 'bm-'+Date.now()+'-'+Math.floor(Math.random()*100000),
-            name: bm.name||'', url: bm.url||'',
+            name: bm.name || extractTitleFromUrl(url),
+            url: url,
             category: (bm.category && tabs.some(function(t){return t.id===bm.category;})) ? bm.category : activeTab,
             dateTime: bm.dateTime||new Date().toISOString(),
-            lastOpened:(bm.lastOpened&&!isNaN(new Date(bm.lastOpened).getTime()))
-                       ?new Date(bm.lastOpened).toISOString():'Never',
-            clickCount:bm.clickCount||0
+            lastOpened: (bm.lastOpened&&!isNaN(new Date(bm.lastOpened).getTime()))
+                       ? new Date(bm.lastOpened).toISOString() : 'Never',
+            clickCount: bm.clickCount||0,
+            favorite: !!bm.favorite
           };
-        }));
+        });
+
+        bookmarks = bookmarks.concat(newBookmarks);
         saveData(); renderTabs(); displayBookmarks();
       } catch(err){ alert('Error: '+err.message); }
     };
@@ -488,6 +629,12 @@
 
   document.getElementById('shortName').addEventListener('keypress',function(e){if(e.key==='Enter')addnsave();});
   document.getElementById('webURL').addEventListener('keypress',function(e){if(e.key==='Enter')addnsave();});
+
+  // Live search: reorder matches to top and dim non-matches as the user types
+  document.getElementById('searchBox').addEventListener('input', function(e){
+    searchQuery = e.target.value.trim().toLowerCase();
+    displayBookmarks();
+  });
 
   loadData();
 </script>
