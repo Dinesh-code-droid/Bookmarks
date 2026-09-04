@@ -199,22 +199,6 @@
 </div>
 
 <script>
-  function focusSearchBox() {
-    var searchBox = document.getElementById('searchBox');
-    if (!searchBox) return;
-    searchBox.focus({ preventScroll: true });
-  }
-
-  document.addEventListener('DOMContentLoaded', function(){
-    focusSearchBox();
-    setTimeout(focusSearchBox, 300);
-  });
-
-  window.addEventListener('load', function(){
-    focusSearchBox();
-    setTimeout(focusSearchBox, 300);
-  });
-
   var bookmarks  = [];
   var tabs       = [];
   var activeTab  = 'home';
@@ -652,7 +636,10 @@
     displayBookmarks();
   });
 
-  loadData();
+  loadData().then(function(){
+    var searchBox = document.getElementById('searchBox');
+    searchBox.focus({ preventScroll: true });
+  });
 </script>
 </body>
 </html>
