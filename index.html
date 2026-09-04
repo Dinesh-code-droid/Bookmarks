@@ -161,7 +161,7 @@
 <body>
 
 <h2>Bookmark Diary</h2>
-<input type="text" id="searchBox" placeholder="search bookmarks or google...."
+<input type="text" id="searchBox" autofocus placeholder="search bookmarks or google...."
   onkeydown="if(event.key==='Enter') searchGoogle()">
 <button id="buttons" onclick="searchGoogle()">Search</button>
 <br><hr><hr><br>
@@ -634,6 +634,14 @@
   document.getElementById('searchBox').addEventListener('input', function(e){
     searchQuery = e.target.value.trim().toLowerCase();
     displayBookmarks();
+  });
+
+  // Keep the search field ready for typing after page initialization.
+  document.addEventListener('DOMContentLoaded', function(){
+    var searchBox = document.getElementById('searchBox');
+    if (!searchBox) return;
+    searchBox.focus();
+    setTimeout(function(){ searchBox.focus(); }, 300);
   });
 
   loadData();
