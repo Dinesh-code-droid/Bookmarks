@@ -199,6 +199,22 @@
 </div>
 
 <script>
+  function focusSearchBox() {
+    var searchBox = document.getElementById('searchBox');
+    if (!searchBox) return;
+    searchBox.focus({ preventScroll: true });
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    focusSearchBox();
+    setTimeout(focusSearchBox, 300);
+  });
+
+  window.addEventListener('load', function(){
+    focusSearchBox();
+    setTimeout(focusSearchBox, 300);
+  });
+
   var bookmarks  = [];
   var tabs       = [];
   var activeTab  = 'home';
@@ -634,14 +650,6 @@
   document.getElementById('searchBox').addEventListener('input', function(e){
     searchQuery = e.target.value.trim().toLowerCase();
     displayBookmarks();
-  });
-
-  // Keep the search field ready for typing after page initialization.
-  document.addEventListener('DOMContentLoaded', function(){
-    var searchBox = document.getElementById('searchBox');
-    if (!searchBox) return;
-    searchBox.focus();
-    setTimeout(function(){ searchBox.focus(); }, 300);
   });
 
   loadData();
